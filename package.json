@@ -1,0 +1,23 @@
+{
+  "name": "worker-express",
+  "version": "0.1.0",
+  "description": "Express-like routing for Cloudflare Workers",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test",
+    "lint": "node scripts/lint.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

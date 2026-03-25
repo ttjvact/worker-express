@@ -1,0 +1,242 @@
+function normalizePath(path) {
+  if (!path) return '/';
+  if (path.length > 1 && path.endsWith('/')) return path.slice(0, -1);
+  return path;
+}
+
+function parseQuery(searchParams) {
+  const query = {};
+  for (const [key, value] of searchParams.entries()) {
+    if (Object.hasOwn(query, key)) {
+      const current = query[key];
+      query[key] = Array.isArray(current) ? [...current, value] : [current, value];
+    } else {
+      query[key] = value;
+    }
+  }
+  return query;
+}
+
+function compilePath(path) {
+  const keys = [];
+  const escaped = path
+    .split('/')
+    .map((segment) => {
+      if (!segment) return '';
+      if (segment.startsWith(':')) {
+        keys.push(segment.slice(1));
+        return '([^/]+)';
+      }
+      return segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    })
+    .join('/');
+
+  return {
+    keys,
+    pattern: new RegExp(`^${escaped}$`),
+  };
+}
+
+function createResponseToolkit() {
+  const headers = new Headers();
+  let statusCode = 200;
+  let body;
+  let finalized = false;
+
+  const res = {
+    headersSent: false,
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    set(name, value) {
+      headers.set(name, value);
+      return this;
+    },
+    send(payload = '') {
+      if (finalized) return this;
+      body = typeof payload === 'string' ? payload : String(payload);
+      if (!headers.has('content-type')) {
+        headers.set('content-type', 'text/plain; charset=utf-8');
+      }
+      finalized = true;
+      this.headersSent = true;
+      return this;
+    },
+    json(data) {
+      if (finalized) return this;
+      body = JSON.stringify(data);
+      headers.set('content-type', 'application/json; charset=utf-8');
+      finalized = true;
+      this.headersSent = true;
+      return this;
+    },
+    end(payload = '') {
+      if (payload !== undefined && payload !== null) {
+        return this.send(payload);
+      }
+      finalized = true;
+      this.headersSent = true;
+      return this;
+    },
+    toResponse() {
+      return new Response(body, { status: statusCode, headers });
+    },
+  };
+
+  return res;
+}
+
+function matchRoute(route, path) {
+  const match = route.pattern.exec(path);
+  if (!match) return null;
+  const params = {};
+  route.keys.forEach((key, index) => {
+    params[key] = decodeURIComponent(match[index + 1]);
+  });
+  return params;
+}
+
+async function parseBody(request) {
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    return undefined;
+  }
+
+  const contentType = request.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      return await request.clone().json();
+    } catch {
+      return undefined;
+    }
+  }
+
+  const text = await request.clone().text();
+  return text.length > 0 ? text : undefined;
+}
+
+function express() {
+  const middlewares = [];
+  const routes = [];
+
+  function register(method, path, handlers) {
+    if (!handlers.length) {
+      throw new Error(`No handlers provided for ${method} ${path}`);
+    }
+    const normalizedPath = normalizePath(path);
+    const { keys, pattern } = compilePath(normalizedPath);
+    routes.push({ method, path: normalizedPath, keys, pattern, handlers });
+  }
+
+  const app = {
+    use(...handlers) {
+      middlewares.push(...handlers);
+      return this;
+    },
+    get(path, ...handlers) {
+      register('GET', path, handlers);
+      return this;
+    },
+    post(path, ...handlers) {
+      register('POST', path, handlers);
+      return this;
+    },
+    put(path, ...handlers) {
+      register('PUT', path, handlers);
+      return this;
+    },
+    patch(path, ...handlers) {
+      register('PATCH', path, handlers);
+      return this;
+    },
+    delete(path, ...handlers) {
+      register('DELETE', path, handlers);
+      return this;
+    },
+    async fetch(request, env, ctx) {
+      const url = new URL(request.url);
+      const path = normalizePath(url.pathname);
+      const matched = routes.find((route) => route.method === request.method && matchRoute(route, path));
+
+      const req = {
+        method: request.method,
+        url: request.url,
+        path,
+        query: parseQuery(url.searchParams),
+        params: {},
+        headers: request.headers,
+        body: await parseBody(request),
+        raw: request,
+        env,
+        ctx,
+      };
+
+      const res = createResponseToolkit();
+
+      if (!matched) {
+        return new Response('Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      }
+
+      req.params = matchRoute(matched, path) || {};
+      const stack = [...middlewares, ...matched.handlers];
+
+      let index = -1;
+
+      const dispatch = async (i, err) => {
+        if (i <= index) throw new Error('next() called multiple times');
+        index = i;
+
+        if (err) {
+          return new Response('Internal Server Error', {
+            status: 500,
+            headers: { 'content-type': 'text/plain; charset=utf-8' },
+          });
+        }
+
+        const handler = stack[i];
+        if (!handler) {
+          if (!res.headersSent) {
+            res.status(204).end('');
+          }
+          return res.toResponse();
+        }
+
+        try {
+          let nextCalled = false;
+          let nextResult;
+          const maybePromise = handler(req, res, (nextErr) => {
+            nextCalled = true;
+            nextResult = dispatch(i + 1, nextErr);
+            return nextResult;
+          });
+          await maybePromise;
+
+          if (nextCalled) {
+            return nextResult;
+          }
+
+          if (res.headersSent) {
+            return res.toResponse();
+          }
+
+          if (i === stack.length - 1) {
+            return res.toResponse();
+          }
+
+          return dispatch(i + 1);
+        } catch {
+          return new Response('Internal Server Error', {
+            status: 500,
+            headers: { 'content-type': 'text/plain; charset=utf-8' },
+          });
+        }
+      };
+
+      return dispatch(0);
+    },
+  };
+
+  return app;
+}
+
+export default express;
