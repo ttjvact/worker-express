@@ -210,6 +210,7 @@ function express(): WorkerExpressApp {
       const url = new URL(request.url);
       const path = normalizePath(url.pathname);
       const matched = routes.find((route) => route.method === request.method && matchRoute(route, path));
+      const isRouteMatched = Boolean(matched);
 
       const req: WorkerExpressRequest = {
         method: request.method,
@@ -225,13 +226,8 @@ function express(): WorkerExpressApp {
       };
 
       const res = createResponseToolkit();
-
-      if (!matched) {
-        return new Response('Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
-      }
-
-      req.params = matchRoute(matched, path) || {};
-      const stack = [...middlewares, ...matched.handlers];
+      req.params = matched ? matchRoute(matched, path) || {} : {};
+      const stack = [...middlewares, ...(matched?.handlers ?? [])];
 
       let index = -1;
 
@@ -249,7 +245,11 @@ function express(): WorkerExpressApp {
         const handler = stack[i];
         if (!handler) {
           if (!res.headersSent) {
-            res.status(204).end();
+            if (isRouteMatched) {
+              res.status(204).end();
+            } else {
+              res.status(404).send('Not Found');
+            }
           }
           return res.toResponse();
         }

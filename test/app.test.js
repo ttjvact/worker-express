@@ -21,6 +21,21 @@ test('unknown route returns 404', async () => {
   assert.equal(response.status, 404);
 });
 
+test('unknown route still runs app.use middleware before 404', async () => {
+  const app = express();
+  let middlewareRan = false;
+
+  app.use((req, res, next) => {
+    middlewareRan = true;
+    return next();
+  });
+
+  const response = await app.fetch(new Request('https://example.com/unknown'));
+
+  assert.equal(middlewareRan, true);
+  assert.equal(response.status, 404);
+});
+
 test('req.params is populated for :param', async () => {
   const app = express();
   app.get('/users/:id', (req, res) => res.json({ id: req.params.id }));
