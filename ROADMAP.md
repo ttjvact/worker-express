@@ -51,6 +51,11 @@ MVP では以下を優先実装し、段階的に互換性を上げる。
 - 開発/検証: `wrangler dev`。
 - Node 依存 API は避け、Workers 互換 API のみ利用。
 
+### 1.4 TypeScript 方針（2026-03 追記）
+- 実装ソースは `src/*.ts` に統一し、ビルドで `dist/index.js` と `dist/index.d.ts` を生成する。
+- 目的は、MVP の API 互換性を維持しつつ、`req/res/next` の型安全性と将来拡張時の破壊的変更検知を高めること。
+- テストは配布物に近い挙動を確認するため `dist/index.js` を参照する。
+
 ---
 
 ## 2. 実装フェーズ（優先順）
@@ -160,13 +165,13 @@ MVP では以下を優先実装し、段階的に互換性を上げる。
 ```text
 worker-express/
   src/
-    app.js
-    router.js
-    request.js
-    response.js
-    middleware.js
-    errors.js
-    index.js
+    app.ts
+    router.ts
+    request.ts
+    response.ts
+    middleware.ts
+    errors.ts
+    index.ts
   test/
     unit/
     integration/
@@ -184,23 +189,23 @@ worker-express/
 ## 6. 初期マイルストーン（実行順）
 
 ### M1: プロジェクト起動
-- [ ] package 初期化
-- [ ] ビルド設定
-- [ ] lint/format 設定
-- [ ] テストランナー設定
+- [x] package 初期化
+- [x] ビルド設定（TypeScript コンパイル + 型定義出力）
+- [x] lint/format 設定
+- [x] テストランナー設定
 
 ### M2: 最小 API 実装
-- [ ] `express()`
-- [ ] `app.get()`
-- [ ] `res.send()`
-- [ ] `app.fetch()`
-- [ ] hello-world example
+- [x] `express()`
+- [x] `app.get()`
+- [x] `res.send()`
+- [x] `app.fetch()`
+- [x] hello-world example
 
 ### M3: Middleware / params
-- [ ] `app.use()`
-- [ ] `next()`
-- [ ] `:param`
-- [ ] `req.query`
+- [x] `app.use()`
+- [x] `next()`
+- [x] `:param`
+- [x] `req.query`
 
 ### M4: 公開準備
 - [ ] README 整備
