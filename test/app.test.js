@@ -79,6 +79,18 @@ test('middleware execution order', async () => {
   assert.deepEqual(await response.json(), ['m1', 'm2', 'handler']);
 });
 
+
+test('fallthrough returns a valid 204 response with no body', async () => {
+  const app = express();
+
+  app.get('/fallthrough', (req, res, next) => next());
+
+  const response = await app.fetch(new Request('https://example.com/fallthrough'));
+
+  assert.equal(response.status, 204);
+  assert.equal(await response.text(), '');
+});
+
 test('next(err) returns 500', async () => {
   const app = express();
 

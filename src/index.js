@@ -71,7 +71,7 @@ function createResponseToolkit() {
       this.headersSent = true;
       return this;
     },
-    end(payload = '') {
+    end(payload) {
       if (payload !== undefined && payload !== null) {
         return this.send(payload);
       }
@@ -80,7 +80,8 @@ function createResponseToolkit() {
       return this;
     },
     toResponse() {
-      return new Response(body, { status: statusCode, headers });
+      const responseBody = [204, 205, 304].includes(statusCode) ? null : body;
+      return new Response(responseBody, { status: statusCode, headers });
     },
   };
 
@@ -196,7 +197,7 @@ function express() {
         const handler = stack[i];
         if (!handler) {
           if (!res.headersSent) {
-            res.status(204).end('');
+            res.status(204).end();
           }
           return res.toResponse();
         }
