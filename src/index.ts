@@ -1,11 +1,53 @@
-function normalizePath(path) {
+export type NextFunction = (err?: unknown) => Promise<Response> | Response | void;
+
+export interface WorkerExpressRequest {
+  method: string;
+  url: string;
+  path: string;
+  query: Record<string, string | string[]>;
+  params: Record<string, string>;
+  headers: Headers;
+  body: unknown;
+  raw: Request;
+  env: unknown;
+  ctx: unknown;
+}
+
+export interface WorkerExpressResponse {
+  headersSent: boolean;
+  status(code: number): WorkerExpressResponse;
+  set(name: string, value: string): WorkerExpressResponse;
+  send(payload?: unknown): WorkerExpressResponse;
+  json(data: unknown): WorkerExpressResponse;
+  end(payload?: unknown): WorkerExpressResponse;
+  toResponse(): Response;
+}
+
+export type Handler = (
+  req: WorkerExpressRequest,
+  res: WorkerExpressResponse,
+  next: NextFunction,
+) => Promise<unknown> | unknown;
+
+interface CompiledPath {
+  keys: string[];
+  pattern: RegExp;
+}
+
+interface Route extends CompiledPath {
+  method: string;
+  path: string;
+  handlers: Handler[];
+}
+
+function normalizePath(path: string): string {
   if (!path) return '/';
   if (path.length > 1 && path.endsWith('/')) return path.slice(0, -1);
   return path;
 }
 
-function parseQuery(searchParams) {
-  const query = {};
+function parseQuery(searchParams: URLSearchParams): Record<string, string | string[]> {
+  const query: Record<string, string | string[]> = {};
   for (const [key, value] of searchParams.entries()) {
     if (Object.hasOwn(query, key)) {
       const current = query[key];
@@ -17,8 +59,8 @@ function parseQuery(searchParams) {
   return query;
 }
 
-function compilePath(path) {
-  const keys = [];
+function compilePath(path: string): CompiledPath {
+  const keys: string[] = [];
   const escaped = path
     .split('/')
     .map((segment) => {
@@ -37,13 +79,13 @@ function compilePath(path) {
   };
 }
 
-function createResponseToolkit() {
+function createResponseToolkit(): WorkerExpressResponse {
   const headers = new Headers();
   let statusCode = 200;
-  let body;
+  let body: BodyInit | null | undefined;
   let finalized = false;
 
-  const res = {
+  const res: WorkerExpressResponse = {
     headersSent: false,
     status(code) {
       statusCode = code;
@@ -88,17 +130,17 @@ function createResponseToolkit() {
   return res;
 }
 
-function matchRoute(route, path) {
+function matchRoute(route: CompiledPath, path: string): Record<string, string> | null {
   const match = route.pattern.exec(path);
   if (!match) return null;
-  const params = {};
+  const params: Record<string, string> = {};
   route.keys.forEach((key, index) => {
     params[key] = decodeURIComponent(match[index + 1]);
   });
   return params;
 }
 
-async function parseBody(request) {
+async function parseBody(request: Request): Promise<unknown> {
   if (request.method === 'GET' || request.method === 'HEAD') {
     return undefined;
   }
@@ -116,11 +158,21 @@ async function parseBody(request) {
   return text.length > 0 ? text : undefined;
 }
 
-function express() {
-  const middlewares = [];
-  const routes = [];
+interface WorkerExpressApp {
+  use(...handlers: Handler[]): WorkerExpressApp;
+  get(path: string, ...handlers: Handler[]): WorkerExpressApp;
+  post(path: string, ...handlers: Handler[]): WorkerExpressApp;
+  put(path: string, ...handlers: Handler[]): WorkerExpressApp;
+  patch(path: string, ...handlers: Handler[]): WorkerExpressApp;
+  delete(path: string, ...handlers: Handler[]): WorkerExpressApp;
+  fetch(request: Request, env?: unknown, ctx?: unknown): Promise<Response>;
+}
 
-  function register(method, path, handlers) {
+function express(): WorkerExpressApp {
+  const middlewares: Handler[] = [];
+  const routes: Route[] = [];
+
+  function register(method: string, path: string, handlers: Handler[]): void {
     if (!handlers.length) {
       throw new Error(`No handlers provided for ${method} ${path}`);
     }
@@ -129,7 +181,7 @@ function express() {
     routes.push({ method, path: normalizedPath, keys, pattern, handlers });
   }
 
-  const app = {
+  const app: WorkerExpressApp = {
     use(...handlers) {
       middlewares.push(...handlers);
       return this;
@@ -159,7 +211,7 @@ function express() {
       const path = normalizePath(url.pathname);
       const matched = routes.find((route) => route.method === request.method && matchRoute(route, path));
 
-      const req = {
+      const req: WorkerExpressRequest = {
         method: request.method,
         url: request.url,
         path,
@@ -183,7 +235,7 @@ function express() {
 
       let index = -1;
 
-      const dispatch = async (i, err) => {
+      const dispatch = async (i: number, err?: unknown): Promise<Response> => {
         if (i <= index) throw new Error('next() called multiple times');
         index = i;
 
@@ -204,7 +256,7 @@ function express() {
 
         try {
           let nextCalled = false;
-          let nextResult;
+          let nextResult: Promise<Response> | undefined;
           const maybePromise = handler(req, res, (nextErr) => {
             nextCalled = true;
             nextResult = dispatch(i + 1, nextErr);
@@ -213,7 +265,7 @@ function express() {
           await maybePromise;
 
           if (nextCalled) {
-            return nextResult;
+            return nextResult as Promise<Response>;
           }
 
           if (res.headersSent) {

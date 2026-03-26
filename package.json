@@ -6,6 +6,7 @@
   "main": "dist/index.js",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
@@ -13,11 +14,15 @@
     "dist"
   ],
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "test": "node --test",
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test",
     "lint": "node scripts/lint.mjs"
   },
   "engines": {
     "node": ">=20"
+  },
+  "types": "dist/index.d.ts",
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }

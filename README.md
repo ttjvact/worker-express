@@ -1,6 +1,6 @@
 # worker-express
 
-Cloudflare Workers 向けの最小 Express 風ルーティングライブラリです。
+Cloudflare Workers 向けの最小 Express 風ルーティングライブラリです。内部実装は TypeScript で管理し、配布物は ESM (`dist/index.js`) と型定義 (`dist/index.d.ts`) を同梱します。
 
 ## インストール
 
@@ -22,6 +22,8 @@ app.get('/', (req, res) => {
 export default app;
 ```
 
+TypeScript 利用時も同じ import で型補完が有効になります。
+
 ## 対応API（MVP）
 
 - `express()`
@@ -37,8 +39,8 @@ export default app;
 
 ```toml
 name = "worker-express-example"
-main = "src/index.js"
+main = "src/index.ts"
 compatibility_date = "2025-01-01"
 ```
 
-`src/index.js` で `export default app` すれば `fetch` ハンドラとして動作します。
+`src/index.ts` で `export default app` すれば `fetch` ハンドラとして動作します。

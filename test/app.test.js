@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import express from '../src/index.js';
+import express from '../dist/index.js';
 
 test('GET / returns 200 and body', async () => {
   const app = express();
