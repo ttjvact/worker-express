@@ -41,6 +41,7 @@ interface Route extends CompiledPath {
 }
 
 function normalizePath(path: string): string {
+  // 目的: ルート定義と実リクエストの比較を安定化するため、末尾スラッシュ差分を吸収する。
   if (!path) return '/';
   if (path.length > 1 && path.endsWith('/')) return path.slice(0, -1);
   return path;
@@ -60,6 +61,7 @@ function parseQuery(searchParams: URLSearchParams): Record<string, string | stri
 }
 
 function compilePath(path: string): CompiledPath {
+  // 目的: `:id` のようなパスパラメータを正規表現に変換し、実行時マッチングを高速化する。
   const keys: string[] = [];
   const escaped = path
     .split('/')
@@ -80,6 +82,7 @@ function compilePath(path: string): CompiledPath {
 }
 
 function createResponseToolkit(): WorkerExpressResponse {
+  // 目的: Response 生成前に status/body/header を段階的に構築できるようにする。
   const headers = new Headers();
   let statusCode = 200;
   let body: BodyInit | null | undefined;
@@ -97,6 +100,7 @@ function createResponseToolkit(): WorkerExpressResponse {
     },
     send(payload = '') {
       if (finalized) return this;
+      // 処理: 文字列以外は文字列表現へ寄せ、text/plain を既定の content-type として扱う。
       body = typeof payload === 'string' ? payload : String(payload);
       if (!headers.has('content-type')) {
         headers.set('content-type', 'text/plain; charset=utf-8');
@@ -107,6 +111,7 @@ function createResponseToolkit(): WorkerExpressResponse {
     },
     json(data) {
       if (finalized) return this;
+      // 処理: JSON 応答時は content-type を明示し、send と同様にここでレスポンスを確定する。
       body = JSON.stringify(data);
       headers.set('content-type', 'application/json; charset=utf-8');
       finalized = true;
@@ -131,6 +136,7 @@ function createResponseToolkit(): WorkerExpressResponse {
 }
 
 function matchRoute(route: CompiledPath, path: string): Record<string, string> | null {
+  // 目的: 正規表現マッチ結果を `req.params` で扱えるキー付きオブジェクトへ変換する。
   const match = route.pattern.exec(path);
   if (!match) return null;
   const params: Record<string, string> = {};
@@ -141,6 +147,7 @@ function matchRoute(route: CompiledPath, path: string): Record<string, string> |
 }
 
 async function parseBody(request: Request): Promise<unknown> {
+  // 目的: メソッドと content-type に応じて req.body を最小限で解釈する。
   if (request.method === 'GET' || request.method === 'HEAD') {
     return undefined;
   }
@@ -236,6 +243,7 @@ function express(): WorkerExpressApp {
         index = i;
 
         if (err) {
+          // 処理: 現状は統一エラーハンドラ未実装のため、next(err) は即時 500 へ集約する。
           return new Response('Internal Server Error', {
             status: 500,
             headers: { 'content-type': 'text/plain; charset=utf-8' },
@@ -246,8 +254,10 @@ function express(): WorkerExpressApp {
         if (!handler) {
           if (!res.headersSent) {
             if (isRouteMatched) {
+              // 処理: ルートには到達したが未送信の場合は、fallthrough を 204 で明示する。
               res.status(204).end();
             } else {
+              // 処理: ルート不一致時は既定の 404 応答を返す。
               res.status(404).send('Not Found');
             }
           }
@@ -259,6 +269,7 @@ function express(): WorkerExpressApp {
           let nextResult: Promise<Response> | undefined;
           const maybePromise = handler(req, res, (nextErr) => {
             nextCalled = true;
+            // 処理: next() は次ハンドラの dispatch Promise を返し、非同期連鎖を維持する。
             nextResult = dispatch(i + 1, nextErr);
             return nextResult;
           });
