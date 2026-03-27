@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from '../dist/index.js';
 
+// 検証対象: 正常系として GET / が 200 と本文を返す処理。
 test('GET / returns 200 and body', async () => {
   const app = express();
   app.get('/', (req, res) => res.send('Hello'));
@@ -12,6 +13,7 @@ test('GET / returns 200 and body', async () => {
   assert.equal(await response.text(), 'Hello');
 });
 
+// 検証対象: 未定義ルートで 404 を返す処理。
 test('unknown route returns 404', async () => {
   const app = express();
   app.get('/known', (req, res) => res.send('ok'));
@@ -21,6 +23,7 @@ test('unknown route returns 404', async () => {
   assert.equal(response.status, 404);
 });
 
+// 検証対象: 404 になる場合でも app.use ミドルウェアが先に実行される処理。
 test('unknown route still runs app.use middleware before 404', async () => {
   const app = express();
   let middlewareRan = false;
@@ -36,6 +39,7 @@ test('unknown route still runs app.use middleware before 404', async () => {
   assert.equal(response.status, 404);
 });
 
+// 検証対象: `:param` パターンから req.params を構築する処理。
 test('req.params is populated for :param', async () => {
   const app = express();
   app.get('/users/:id', (req, res) => res.json({ id: req.params.id }));
@@ -46,6 +50,7 @@ test('req.params is populated for :param', async () => {
   assert.deepEqual(await response.json(), { id: '42' });
 });
 
+// 検証対象: クエリ文字列を req.query へデコードして格納する処理。
 test('req.query is parsed', async () => {
   const app = express();
   app.get('/search', (req, res) => res.json(req.query));
@@ -55,6 +60,7 @@ test('req.query is parsed', async () => {
   assert.deepEqual(await response.json(), { q: 'worker express', page: '2' });
 });
 
+// 検証対象: application/json のリクエスト本文を req.body へ反映する処理。
 test('JSON body is parsed into req.body', async () => {
   const app = express();
   app.post('/echo', (req, res) => res.json(req.body));
@@ -70,6 +76,7 @@ test('JSON body is parsed into req.body', async () => {
   assert.deepEqual(await response.json(), { ok: true });
 });
 
+// 検証対象: 複数ミドルウェアとルートハンドラの実行順序を維持する処理。
 test('middleware execution order', async () => {
   const app = express();
   const order = [];
@@ -94,7 +101,7 @@ test('middleware execution order', async () => {
   assert.deepEqual(await response.json(), ['m1', 'm2', 'handler']);
 });
 
-
+// 検証対象: ルート内で next() した fallthrough が 204 / 空本文になる処理。
 test('fallthrough returns a valid 204 response with no body', async () => {
   const app = express();
 
@@ -106,6 +113,7 @@ test('fallthrough returns a valid 204 response with no body', async () => {
   assert.equal(await response.text(), '');
 });
 
+// 検証対象: 異常系として next(err) が統一 500 応答へ変換される処理。
 test('next(err) returns 500', async () => {
   const app = express();
 
