@@ -44,3 +44,8 @@ compatibility_date = "2025-01-01"
 ```
 
 `src/index.ts` で `export default app` すれば `fetch` ハンドラとして動作します。
+
+
+## 詳細ドキュメント
+
+詳細な使い方は `docs/USAGE.md` を参照してください。

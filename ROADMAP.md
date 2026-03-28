@@ -1,251 +1,195 @@
-# worker-express ロードマップ
+# worker-express ロードマップ（バージョン別タスク管理）
 
-## 運用ルールとの住み分け
-- 本ドキュメントは**機能要件・実装フェーズ・完了条件**のみを扱う。
-- 全体的な開発ルール（実装規約、コメント規約、レビュー観点）は `AGENTS.md` を参照する。
-
----
-
-## 0. 目標（MVPの定義）
-- Cloudflare Workers 上で、Express 風の記法でルーティングできる最小実装を提供する。
-- 最終的な利用体験は次のイメージを満たす。
-
-```js
-import express from "worker-express";
-
-const app = express();
-
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
-
-export default app;
-```
-
-- `export default app` の時点で Worker の `fetch` ハンドラとして動作する（利用者が `fetch` を意識しなくて良い）。
+## ドキュメントの役割
+- `AGENTS.md`: 開発ルール・実装/レビュー規約・コメント規約を管理する。
+- `ROADMAP.md`（本ファイル）: **各バージョンで実施するタスク一覧と完了条件**を管理する。
+- `CHANGELOG.md`: 実際にリリース済みバージョンの変更履歴を記録する。
 
 ---
 
-## 1. 全体アーキテクチャ方針
-
-### 1.1 API設計（Express 互換の優先度）
-MVP では以下を優先実装し、段階的に互換性を上げる。
-
-- `express()`
-- `app.use(middleware)`
-- `app.get/post/put/patch/delete(path, ...handlers)`
-- `req`
-  - `req.method`, `req.url`, `req.path`, `req.query`, `req.params`
-  - `req.headers`, `req.body`（JSON / text）
-- `res`
-  - `res.status(code)`
-  - `res.set(name, value)`
-  - `res.json(data)`
-  - `res.send(body)`
-  - `res.end()`
-- エラーハンドリング
-  - `next(err)`
-  - 最後に統一エラーレスポンス
-
-### 1.2 Worker 変換レイヤ
-- 内部では `Request -> Context(req/res/next) -> Response` のパイプラインを実装。
-- `app.fetch(request, env, ctx)` を実装し、`export default app` 時に `{ fetch: app.fetch }` として使えるようにする。
-- ルーティングは軽量化を優先し、最初は静的パス + `:param` を実装。必要なら将来 trie ベースへ拡張。
-
-### 1.3 実行環境
-- ランタイム: Cloudflare Workers。
-- 開発/検証: `wrangler dev`。
-- Node 依存 API は避け、Workers 互換 API のみ利用。
-
-### 1.4 TypeScript 方針（2026-03 追記）
-- 実装ソースは `src/*.ts` に統一し、ビルドで `dist/index.js` と `dist/index.d.ts` を生成する。
-- 目的は、MVP の API 互換性を維持しつつ、`req/res/next` の型安全性と将来拡張時の破壊的変更検知を高めること。
-- テストは配布物に近い挙動を確認するため `dist/index.js` を参照する。
+## 運用ルール
+- `0.1.0` を MVP とする。
+- 実装前タスクは本ファイルに記載し、実施後に `- [x]` へ更新する。
+- `x.y.z` の **z（パッチ）系バージョンは、明示指示があるまでバージョン更新しない**。
+  - 例: `0.2.1` の想定タスクを対応した場合、まずは本ファイル上でチェック更新のみ行う。
+- リリース実施時のみ `CHANGELOG.md` を更新する。
 
 ---
 
-## 2. 実装フェーズ（優先順）
+## 0.1.0（MVP）
+- Cloudflare Workers 上で Express 風 API の最小セットを提供する。
 
-### フェーズ1: 土台（1〜2週）
-1. パッケージ初期化
-   - `package.json`（ESM, exports, types）
-   - `tsup` or `rollup` でライブラリビルド
-2. コアクラス
-   - `createApp()` / `Router`
-   - middleware chain 実装
-3. 最小レスポンス
-   - `res.status`, `res.send`, `res.json`
-4. `app.fetch` 実装
-   - Worker `fetch(request, env, ctx)` 直結
-
-**完了条件**
-- `app.get('/', ...)` が `wrangler dev` で動作。
-- `export default app` で Worker として動作。
-
-### フェーズ2: ルーティング・Request拡張（1〜2週）
-1. path params
-   - `/users/:id`
-2. query parsing
-3. body parsing（JSON/text）
-4. 複数 middleware + `next()`
-
-**完了条件**
-- Express 的な基本 CRUD API が実装可能。
-
-### フェーズ3: 互換性・安定化（1〜2週）
-1. エラーハンドリング middleware
-2. 404 / 405 の標準応答
-3. `res.set`, `res.end`、header 上書き規則の整理
-4. パフォーマンス測定（簡易ベンチ）
-
-**完了条件**
-- 主要 API がドキュメント通り動作し、CI でテスト緑。
-
-### フェーズ4: 拡張機能（任意）
-- サブルータ `express.Router()`
-- `app.route()`
-- cookie helper
-- CORS helper
-- static 配信（Worker 制約前提）
-
----
-
-## 3. npm 公開計画
-
-### 3.1 パッケージ構成
-- パッケージ名候補: `worker-express`
-- 出力形式
-  - ESM: `dist/index.js`
-  - 型定義: `dist/index.d.ts`
-- `package.json` 例方針
-  - `"type": "module"`
-  - `"exports"` を設定
-  - `"files": ["dist"]`
-  - `"engines"` で Node LTS を明記（開発用途）
-
-### 3.2 リリース運用
-- バージョニング: SemVer
-- pre-release: `0.x`
-- 安定化後: `1.0.0`
-- 変更履歴: `CHANGELOG.md`（Conventional Commits + 自動生成推奨）
-
-### 3.3 品質ゲート（publish前）
-- `npm pack` で同梱物確認
-- examples が最新 API と一致
-- README の最短サンプルが実行可能
-
----
-
-## 4. テスト戦略
-
-### 4.1 テスト層
-1. 単体テスト
-   - ルータのマッチング
-   - middleware chain
-   - `res` 系メソッド
-2. 結合テスト（Worker 実行）
-   - Miniflare or Wrangler test 環境で `fetch` 呼び出し
-3. E2E テスト
-   - example アプリを起動して HTTP 検証
-
-### 4.2 テストケース（MVP必須）
-- `GET /` で 200 + body
-- 不一致ルートで 404
-- `req.params` が正しく取得できる
-- `req.query` が decode される
-- JSON body を `req.body` に反映
-- middleware 実行順序の保証
-- `next(err)` で 500 ハンドリング
-
-### 4.3 CI（GitHub Actions想定）
-- Node LTS matrix（例: 20, 22）
-- `npm run lint`
-- `npm run test`
-- `npm run build`
-- 必要であれば型チェック
-
----
-
-## 5. 推奨ディレクトリ構成
-
-```text
-worker-express/
-  src/
-    app.ts
-    router.ts
-    request.ts
-    response.ts
-    middleware.ts
-    errors.ts
-    index.ts
-  test/
-    unit/
-    integration/
-    e2e/
-  examples/
-    hello-world/
-  .github/workflows/ci.yml
-  package.json
-  README.md
-  CHANGELOG.md
-```
-
----
-
-## 6. 初期マイルストーン（実行順）
-
-### M1: プロジェクト起動
+1. 基盤セットアップ
 - [x] package 初期化
-- [x] ビルド設定（TypeScript コンパイル + 型定義出力）
-- [x] lint/format 設定
-- [x] テストランナー設定
+- [x] TypeScript ビルド構成（`dist/index.js` と `dist/index.d.ts`）
+- [x] lint / test の実行基盤
 
-### M2: 最小 API 実装
+2. 最小 API 実装
 - [x] `express()`
-- [x] `app.get()`
-- [x] `res.send()`
-- [x] `app.fetch()`
-- [x] hello-world example
+- [x] `app.get/post/put/patch/delete(path, ...handlers)`
+- [x] `res.status()`, `res.set()`, `res.send()`, `res.json()`, `res.end()`
+- [x] `app.fetch(request, env, ctx)`
 
-### M3: Middleware / params
+3. ルーティング/ミドルウェア
 - [x] `app.use()`
 - [x] `next()`
-- [x] `:param`
+- [x] path params（`/users/:id`）
 - [x] `req.query`
 
-### M4: 公開準備
-- [ ] README 整備
-- [ ] API 仕様表
-- [ ] CI 緑化
+4. エラーパス
+- [x] `next(err)` による 500 応答
+
+完了条件
+- [x] README の最小サンプル相当が動作する。
+- [x] テストが通る。
+
+---
+
+## 0.1.1（運用・ドキュメント整備）
+- MVP 後の運用安定化として、ドキュメント責務を整理する。
+
+1. ドキュメント責務の明確化
+- [x] `ROADMAP.md` を「バージョン別タスク管理」に再編
+- [x] `AGENTS.md` に「ルール集約先」の位置づけを明記
+- [x] `CHANGELOG.md` はリリース履歴に限定する方針を明記
+
+2. 詳細ドキュメント追加
+- [x] `docs/` 配下に詳細な使い方ガイドを追加
+- [x] README から `docs/` への導線追加
+
+3. 進行管理ルール
+- [x] patch バージョン（z）運用ルールを本ファイルへ明記
+
+完了条件
+- [ ] 新規参加者が README + docs を見て利用手順を再現できる。
+
+---
+
+## 0.2.0（未実装タスクの機能化）
+- 現時点でロードマップ上にあり、未完了だった項目を優先実装する。
+
+1. 公開準備
+- [ ] README 整備（互換レベル表の拡充）
+- [ ] API 仕様表作成
+- [ ] CI 緑化（Node LTS matrix）
 - [ ] `npm publish --access public` 実施
 
----
+2. HTTP 応答仕様の整備
+- [ ] 404 / 405 の標準応答を明確化し実装
+- [ ] `res.set`, `res.end` と header 上書き規則の仕様固定
 
-## 7. リスクと対策
-- **Express 完全互換の期待値過多**
-  - 対策: README に「互換レベル表」を明記。
-- **Workers と Node 差分で middleware が壊れる**
-  - 対策: Node 専用依存を持つ middleware 非対応を明記。
-- **レスポンス確定後の二重書き込み**
-  - 対策: `res.headersSent` 相当フラグで保護。
+3. 実行確認
+- [ ] examples の動作確認を publish 前チェックに組み込む
 
----
-
-## 8. README の最初に載せるべき内容
-1. 3行でわかるコンセプト
-2. インストール方法
-   - `npm i worker-express`
-3. 最小サンプル
-4. 対応 API 一覧（対応 / 未対応）
-5. Cloudflare Workers での実行方法（`wrangler.toml` 例）
+完了条件
+- [ ] publish 可能な品質ゲートをすべて満たす。
 
 ---
 
-## 9. まず最初に実行する具体タスク（今日やること）
-1. リポジトリ初期ファイル作成（`package.json`, `src/index.js`, `README.md`）
-2. `app.get` + `res.send` + `app.fetch` まで最短実装
-3. `examples/hello-world` を `wrangler dev` で疎通
-4. 単体テストを 5 ケース実装
-5. CI を追加して pull request で自動実行
+## 0.3.0（互換性・品質向上）
+1. テスト拡充
+- [ ] Miniflare / Wrangler ベースの結合テスト追加
+- [ ] middleware 実行順序の網羅ケース追加
+- [ ] エラー処理（`next(err)`）の境界値テスト追加
 
-この順で進めると、最短で「動くMVP」を公開し、そこから互換性を安全に積み上げられる。
+2. 品質管理
+- [ ] 型チェックを CI に組み込む
+- [ ] 主要 API の破壊的変更検知ルール策定
+
+完了条件
+- [ ] 主要 API の回帰バグを CI で捕捉できる状態にする。
+
+---
+
+## 0.4.0（開発者体験の向上）
+1. 利用ガイド拡充
+- [ ] ユースケース別サンプル（API、middleware、error handler）を docs に追加
+- [ ] トラブルシュートを docs に追加
+
+2. 開発効率
+- [ ] ローカル検証テンプレート（example 拡充）
+- [ ] 変更時チェックリストを docs 化
+
+完了条件
+- [ ] 初回利用者が docs のみで一般的な API を構築できる。
+
+---
+
+## 0.5.0（配布・運用基盤）
+1. npm 公開運用
+- [ ] npm アカウント作成（未作成の場合）
+- [ ] npm 2FA 設定
+- [ ] package 名利用可否確認
+- [ ] 公開手順（release checklist）を docs 化
+
+2. リポジトリ運用
+- [ ] GitHub Actions で release フロー整備
+- [ ] 変更履歴の更新手順を定義
+
+完了条件
+- [ ] メンテナが再現可能な release 手順を持つ。
+
+---
+
+## 0.6.0（拡張 API: ルーティング）
+1. 追加 API
+- [ ] `express.Router()`
+- [ ] `app.route()`
+
+2. 互換性確認
+- [ ] 既存 API との後方互換テスト追加
+
+完了条件
+- [ ] ルータ分割を使った中規模構成に対応できる。
+
+---
+
+## 0.7.0（拡張 API: 実運用補助）
+1. helper 系
+- [ ] cookie helper
+- [ ] CORS helper
+
+2. ドキュメント
+- [ ] helper 利用時の推奨設定を docs 化
+
+完了条件
+- [ ] 実運用向けの基本補助機能が提供される。
+
+---
+
+## 0.8.0（静的配信・制約整理）
+1. 機能
+- [ ] static 配信（Workers 制約前提）
+
+2. ドキュメント
+- [ ] Workers 制約と代替構成を docs に明記
+
+完了条件
+- [ ] static 配信の適用範囲と制約が明確である。
+
+---
+
+## 0.9.0（1.0.0 前最終安定化）
+1. 安定化
+- [ ] パフォーマンス測定（簡易ベンチ）
+- [ ] 主要 API の挙動凍結（breaking change 候補の解消）
+- [ ] ドキュメント最終整備
+
+2. 運用確認
+- [ ] リリース手順のリハーサル
+
+完了条件
+- [ ] 1.0.0 に向けた blocking issue が解消されている。
+
+---
+
+## 1.0.0（安定版）
+- 0.x 系で定義した必須機能・品質・運用要件を満たし、安定版として公開する。
+
+1. リリース判定
+- [ ] API 仕様の安定宣言
+- [ ] ドキュメントの完成
+- [ ] CI / テスト / リリースフローの固定化
+
+完了条件
+- [ ] 安定版として利用者に案内可能な品質である。
