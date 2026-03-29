@@ -18,6 +18,12 @@ export default app;
 
 - `export default app` とすることで、Cloudflare Workers の `fetch` ハンドラとして動作します。
 
+## 1.1 サポート範囲
+
+- 実行環境は Cloudflare Workers を対象とします。
+- 開発 / 検証環境は Node.js LTS の最新 2 系統を対象とします。
+- 現時点の対象バージョンは `20` と `22` です。
+
 ---
 
 ## 2. ルーティング

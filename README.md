@@ -24,6 +24,12 @@ export default app;
 
 TypeScript 利用時も同じ import で型補完が有効になります。
 
+## サポート範囲
+
+- 実行環境: Cloudflare Workers
+- 開発 / 検証環境: Node.js LTS の最新 2 系統（現時点では `20`, `22`）
+- 配布形式: ESM (`dist/index.js`) + 型定義 (`dist/index.d.ts`)
+
 ## 対応API（MVP）
 
 - `express()`
