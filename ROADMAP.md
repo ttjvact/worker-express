@@ -73,7 +73,9 @@
 - [ ] npm 2FA 設定
 - [ ] package 名利用可否確認
 - [ ] 公開手順の整理（release checklist）
-- [ ] `npm pack` による配布物確認
+- [ ] README 内リンクが npm 配布物でも有効になるよう設計を見直す
+- [ ] docs を配布物に含めるか、GitHub 上の絶対 URL に変更するか方針を決める
+- [ ] `npm pack` による配布物確認（README リンク切れがないことを検証）
 - [ ] README 整備（互換レベル表の拡充）
 - [ ] examples の動作確認を publish 前チェックに組み込む
 - [ ] CI 緑化（Node LTS matrix）
