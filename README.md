@@ -30,6 +30,21 @@ TypeScript 利用時も同じ import で型補完が有効になります。
 - 開発 / 検証環境: Node.js LTS の最新 2 系統（現時点では `20`, `22`）
 - 配布形式: ESM (`dist/index.js`) + 型定義 (`dist/index.d.ts`)
 
+## できること
+
+- Cloudflare Workers で Express 風の最小ルーティングを組めます。
+- `app.use()` によるミドルウェア実行ができます。
+- path params と `req.query` を扱えます。
+- `res.status()`, `res.set()`, `res.send()`, `res.json()`, `res.end()` を使えます。
+- `next(err)` による最小の 500 応答へフォールバックできます。
+
+## まだできないこと / 制約
+
+- `express.Router()` や `app.route()` には未対応です。
+- cookie / CORS helper や static 配信は未対応です。
+- 既定挙動は Express 互換を志向しますが、完全互換ではありません。
+- Node.js の HTTP サーバー実装としての Express 互換実行は対象外です。
+
 ## 対応API（MVP）
 
 - `express()`
@@ -51,7 +66,18 @@ compatibility_date = "2025-01-01"
 
 `src/index.ts` で `export default app` すれば `fetch` ハンドラとして動作します。
 
+## 開発方法
+
+```bash
+npm install
+npm run lint
+npm test
+```
 
 ## 詳細ドキュメント
 
 詳細な使い方は `docs/USAGE.md` を参照してください。
+
+## ライセンス
+
+MIT License
