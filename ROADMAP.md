@@ -94,19 +94,19 @@
 
 1. 結合テスト導入
 
-- [ ] Miniflare または Wrangler を使った結合テスト方針を決める
-- [ ] `examples/` または専用 fixture を使って Workers 実行ベースの結合テストを追加する
-- [ ] CI またはローカル手順で結合テストを再現できるようにする
+- [x] 手動確認は Wrangler、`node:test` の結合テストは Miniflare を使う方針を決める
+- [x] `examples/` と専用 fixture を使って Workers 実行ベースの結合テストを追加する
+- [x] CI またはローカル手順で結合テストを再現できるようにする
 
 2. 確認対象の最小整理
 
-- [ ] 最小サンプルのルーティングが Workers 実行でも動くことを確認する
-- [ ] `app.use()` と route handler の基本連携を Workers 実行で確認する
-- [ ] `req.query` / `req.params` / `next(err)` の代表ケースを結合テストへ含める
+- [x] 最小サンプルのルーティングが Workers 実行でも動くことを確認する
+- [x] `app.use()` と route handler の基本連携を Workers 実行で確認する
+- [x] `req.query` / `req.params` / `next(err)` の代表ケースを結合テストへ含める
 
 完了条件
 
-- [ ] Workers 実行ベースの結合テストが追加され、MVP 前の確認項目として使える。
+- [x] Workers 実行ベースの結合テストが追加され、MVP 前の確認項目として使える。
 
 ---
 

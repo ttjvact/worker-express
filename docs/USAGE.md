@@ -147,6 +147,16 @@ compatibility_date = "2025-01-01"
 
 - エントリーポイントで `export default app` を返す構成にしてください。
 
+### 7.1 ローカル結合テスト
+
+- `node:test` で Workers 実行相当の確認をしたい場合は `Miniflare` を使います。
+- このリポジトリでは `npm run test:integration` が `test/miniflare.test.js` を実行します。
+
+### 7.2 手動確認
+
+- 手動の動作確認は `Wrangler` を使います。
+- `npm run dev:hello` を実行すると、`examples/hello-world/wrangler.jsonc` を使ってサンプル Worker を起動できます。
+
 ---
 
 ## 8. バージョン運用ルール（利用者向け）

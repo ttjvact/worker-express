@@ -74,6 +74,8 @@ npm run lint
 npm test
 ```
 
+Workers 実行に近い確認は `Miniflare` を使った `npm run test:integration` で行えます。手動確認は `Wrangler` を使い、`npm run dev:hello` で `examples/hello-world` を起動します。
+
 ## 詳細ドキュメント
 
 詳細な使い方は `docs/USAGE.md` を参照してください。
