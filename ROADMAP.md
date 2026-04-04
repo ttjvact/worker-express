@@ -116,18 +116,18 @@
 
 1. 公開前提の整備
 
-- [ ] `oss_mvp_checklist.md` に従って、公開前に必要な Git / GitHub / npm の準備を進める
-- [ ] npm 公開に必要な確認事項を `oss_mvp_checklist.md` で管理する
-- [ ] checklist の結果を踏まえて、公開前に不足している作業を埋める
+- [ ] `oss_mvp_checklist.md` の未完項目を棚卸しし、`0.1.0` 前に終える作業と後回しにできる作業を切り分ける
+- [ ] GitHub / npm / branch protection / release 設定など、公開に必要な外部設定の不足を埋める
+- [ ] `npm pack` の結果を基準に、README・LICENSE・`dist/` など配布物の内容が公開方針どおりか確認する
 
 2. 公開品質の見える化
 
 - [x] CI 設定（Node LTS matrix）を追加
-- [ ] CI 緑化を公開判定条件として固定
+- [ ] lint / unit test / integration test / build が通ることを公開判定条件として固定する
 
 完了条件
 
-- [ ] `oss_mvp_checklist.md` を基準に `0.1.0` の公開判定に必要な手順と前提確認が揃っている。
+- [ ] `oss_mvp_checklist.md` を見れば、公開前に確認すべき設定・配布物・手順が抜けなく追える。
 
 ---
 
@@ -137,21 +137,21 @@
 
 1. 公開前の最終整備
 
-- [ ] `oss_mvp_checklist.md` の未完項目を解消する
-- [ ] README に公開時点のサポート範囲と Express 差分を最終反映する
-- [ ] npm 配布物でも有効なドキュメント導線を確定する
-- [ ] README の手順とサンプルコードの再現確認を行う
+- [ ] `oss_mvp_checklist.md` の未完項目を解消し、公開ブロッカーが残っていない状態にする
+- [ ] README に、公開時点で保証するサポート範囲・既知の制約・Express 差分を利用者向けに明記する
+- [ ] README から参照する詳細ドキュメントを、npm 配布物に含めるか hosted URL に置き換えるか決め、配布後も辿れる導線にする
+- [ ] README の install 手順と最小サンプルを、npm pack 相当の配布物または公開後パッケージで再現確認する
 
 2. リリース実施
 
-- [ ] `npm publish --access public` の実行条件を確認する
-- [ ] `0.1.0` として publish する
-- [ ] `CHANGELOG.md` と GitHub Release に公開内容を反映できる状態にする
+- [ ] `npm publish --access public` を安全に実行できる権限・2FA・公開設定を確認する
+- [ ] `0.1.0` を publish し、公開されたパッケージを外部利用者が install できる状態にする
+- [ ] `CHANGELOG.md` と GitHub Release に、公開版で何が使えて何が未対応かを記録する
 
 完了条件
 
-- [ ] README の最小サンプル相当が npm 配布物でも再現できる。
-- [ ] publish 可能な品質ゲートを満たす。
+- [ ] README の最小サンプル相当が npm 配布物または公開済みパッケージで再現できる。
+- [ ] 利用者が README と公開パッケージだけで最低限の利用開始ができる。
 
 ---
 
