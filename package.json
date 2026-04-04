@@ -1,9 +1,18 @@
 {
   "name": "worker-express",
-  "version": "0.1.0",
+  "version": "0.0.3",
   "description": "Express-like routing for Cloudflare Workers",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
+  "homepage": "https://github.com/ttjvact/worker-express",
+  "bugs": {
+    "url": "https://github.com/ttjvact/worker-express/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ttjvact/worker-express.git"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -15,7 +24,10 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test",
+    "dev:hello": "npm run build && wrangler dev --config examples/hello-world/wrangler.jsonc",
+    "test": "npm run build && node --test test/app.test.js test/miniflare.test.js",
+    "test:integration": "npm run build && node --test test/miniflare.test.js",
+    "test:unit": "npm run build && node --test test/app.test.js",
     "lint": "node scripts/lint.mjs"
   },
   "engines": {
@@ -23,6 +35,8 @@
   },
   "types": "dist/index.d.ts",
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "miniflare": "^4.20260401.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.80.0"
   }
 }

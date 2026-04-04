@@ -1,4 +1,4 @@
-import express from '../../src/index.js';
+import express from '../../dist/index.js';
 
 const app = express();
 
