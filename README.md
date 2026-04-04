@@ -84,7 +84,7 @@ Workers 実行に近い確認は `Miniflare` を使った `npm run test:integrat
 
 ## 詳細ドキュメント
 
-詳細な使い方は `docs/USAGE.md` を参照してください。npm 配布物から参照する場合は、GitHub 上の `docs/USAGE.md` を参照してください。
+詳細な使い方は `docs/USAGE.md` を参照してください。npm 配布物にも同梱しています。
 
 ## サポートと案内
 
