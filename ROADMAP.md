@@ -118,8 +118,8 @@
 
 - [x] `oss_mvp_checklist.md` の未完項目を棚卸しし、`0.1.0` 前に終える作業と後回しにできる作業を切り分ける
 - [x] GitHub / npm / branch protection / release 設定など、公開に必要な外部設定の不足を埋める
-- [ ] `npm pack` の結果を基準に、README・LICENSE・`dist/` など配布物の内容が公開方針どおりか確認する
-- [ ] README から参照する詳細ドキュメントを、npm 配布物に含めるか hosted URL に置き換えるか決め、配布後も辿れる導線にする
+- [x] `npm pack` の結果を基準に、README・LICENSE・`dist/` など配布物の内容が公開方針どおりか確認する
+- [x] README から参照する詳細ドキュメントを、npm 配布物に含めるか hosted URL に置き換えるか決め、配布後も辿れる導線にする
 
 2. 公開品質の見える化
 
