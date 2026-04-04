@@ -45,6 +45,12 @@ TypeScript 利用時も同じ import で型補完が有効になります。
 - 既定挙動は Express 互換を志向しますが、完全互換ではありません。
 - Node.js の HTTP サーバー実装としての Express 互換実行は対象外です。
 
+## 安定性と互換性
+
+- `0.x` 系の間は MVP として改善を優先するため、API や挙動に breaking change が入る可能性があります。
+- 互換性影響のある変更は、README・CHANGELOG・GitHub Releases で明示します。
+- 今後の予定や breaking change 候補は `ROADMAP.md` で管理します。
+
 ## 対応API（MVP）
 
 - `express()`
@@ -78,7 +84,13 @@ Workers 実行に近い確認は `Miniflare` を使った `npm run test:integrat
 
 ## 詳細ドキュメント
 
-詳細な使い方は `docs/USAGE.md` を参照してください。
+詳細な使い方は `docs/USAGE.md` を参照してください。npm 配布物にも同梱しています。
+
+## サポートと案内
+
+- バグ報告や機能提案は GitHub Issues を利用してください。
+- 使い方の相談や未確定な仕様の相談は GitHub Discussions を利用してください。
+- 今後の対応予定は `ROADMAP.md` を参照してください。
 
 ## ライセンス
 

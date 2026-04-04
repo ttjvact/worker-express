@@ -116,18 +116,19 @@
 
 1. 公開前提の整備
 
-- [ ] `oss_mvp_checklist.md` の未完項目を棚卸しし、`0.1.0` 前に終える作業と後回しにできる作業を切り分ける
-- [ ] GitHub / npm / branch protection / release 設定など、公開に必要な外部設定の不足を埋める
+- [x] `oss_mvp_checklist.md` の未完項目を棚卸しし、`0.1.0` 前に終える作業と後回しにできる作業を切り分ける
+- [x] GitHub / npm / branch protection / release 設定など、公開に必要な外部設定の不足を埋める
 - [ ] `npm pack` の結果を基準に、README・LICENSE・`dist/` など配布物の内容が公開方針どおりか確認する
+- [ ] README から参照する詳細ドキュメントを、npm 配布物に含めるか hosted URL に置き換えるか決め、配布後も辿れる導線にする
 
 2. 公開品質の見える化
 
 - [x] CI 設定（Node LTS matrix）を追加
-- [ ] lint / unit test / integration test / build が通ることを公開判定条件として固定する
+- [x] lint / unit test / integration test / build が通ることを公開判定条件として固定する
 
 完了条件
 
-- [ ] `oss_mvp_checklist.md` を見れば、公開前に確認すべき設定・配布物・手順が抜けなく追える。
+- [x] `oss_mvp_checklist.md` を見れば、公開前に確認すべき設定・配布物・手順が抜けなく追える。
 
 ---
 
@@ -135,17 +136,15 @@
 
 - Cloudflare Workers 上で Express 風 API の最小セットを公開可能な状態にする。
 
-1. 公開前の最終整備
+1. 公開前の最終確認
 
-- [ ] `oss_mvp_checklist.md` の未完項目を解消し、公開ブロッカーが残っていない状態にする
 - [ ] README に、公開時点で保証するサポート範囲・既知の制約・Express 差分を利用者向けに明記する
-- [ ] README から参照する詳細ドキュメントを、npm 配布物に含めるか hosted URL に置き換えるか決め、配布後も辿れる導線にする
 - [ ] README の install 手順と最小サンプルを、npm pack 相当の配布物または公開後パッケージで再現確認する
 
 2. リリース実施
 
-- [ ] `npm publish --access public` を安全に実行できる権限・2FA・公開設定を確認する
-- [ ] `0.1.0` を publish し、公開されたパッケージを外部利用者が install できる状態にする
+- [ ] `npm publish --access public` を実行し、公開されたパッケージを npm 上で参照できる状態にする
+- [ ] 公開された `0.1.0` を別環境から install し、利用開始できる状態を確認する
 - [ ] `CHANGELOG.md` と GitHub Release に、公開版で何が使えて何が未対応かを記録する
 
 完了条件

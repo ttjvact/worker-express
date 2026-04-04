@@ -1,6 +1,6 @@
 # OSS MVP公開チェックリスト
 
-最終更新: 2026-03-31
+最終更新: 2026-04-05
 
 ## 目的
 
@@ -17,7 +17,7 @@
 - [x] サポート範囲を決めた
 - [x] README に「できること」を明記した
 - [x] README に「まだできないこと / 制約」を明記した
-- [ ] README に、将来 breaking change がありうることを明記した
+- [x] README に、将来 breaking change がありうることを明記した
 
 ---
 
@@ -39,7 +39,12 @@
 
 - [x] npm アカウントを用意した
 - [x] npm の 2FA を確認した
-- [ ] 初回公開の手順を決めた
+- [x] 初回公開の手順を決めた
+  - `main` に公開対象の変更を取り込み、公開版の `version` / tag / `CHANGELOG` を確定する
+  - `npm run lint` / `npm test` / `npm run test:integration` / `npm run build` を通し、`npm pack` で配布物を最終確認する
+  - README の install 手順と最小サンプルを、公開直前の状態で手元再確認する
+  - GitHub で `v0.1.0` タグを打てる状態にしてから、`npm publish --access public` を実行する
+  - 公開後に別環境で `npm i worker-express` を確認し、GitHub Release を作成して公開内容を案内する
 - [x] `package.json` に `name` / `version` / `description` がある
 - [x] `package.json` に `license` / `repository` / `homepage` / `bugs` がある
 - [x] `package.json` に `type` / `main` / `exports` / `types` がある
@@ -48,7 +53,6 @@
 - [x] 配布物に `README` / `LICENSE` / `dist` が含まれる
 - [x] 不要ファイルが配布物に入っていない
 - [x] `private: true` になっていない
-- [ ] `npm publish --access public` の実行条件を確認した
 
 ---
 
@@ -83,11 +87,11 @@
 ## 6. 公開直前
 
 - [x] クローン直後にセットアップできることを確認した
-- [ ] README の手順を手元で再現した
-- [ ] サンプルコードが動くことを確認した
+- [x] README の手順を手元で再現した
+- [x] サンプルコードが動くことを確認した
 - [x] 公開するバージョン番号とタグ名を確定した
 - [x] 公開範囲に秘密情報がないことを最終確認した
-- [ ] 公開後に困らない最低限の説明が揃っている
+- [x] 公開後に困らない最低限の説明が揃っている
 
 ---
 
