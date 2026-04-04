@@ -1,6 +1,6 @@
 {
   "name": "worker-express",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Express-like routing for Cloudflare Workers",
   "license": "MIT",
   "type": "module",
