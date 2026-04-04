@@ -76,7 +76,7 @@
 - [x] CI が `push` / `pull_request` / Node `20`, `22` を対象にしている
 - [x] `npm audit` などで依存パッケージの脆弱性を確認した
 - [x] `.env` や API キー、トークンが履歴に含まれていないことを確認した
-- [ ] GitHub の Security 機能を必要に応じて有効化した
+- [x] GitHub の Security 機能を必要に応じて有効化した
 
 ---
 
