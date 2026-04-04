@@ -29,6 +29,7 @@ TypeScript 利用時も同じ import で型補完が有効になります。
 - 実行環境: Cloudflare Workers
 - 開発 / 検証環境: Node.js LTS の最新 2 系統（現時点では `20`, `22`）
 - 配布形式: ESM (`dist/index.js`) + 型定義 (`dist/index.d.ts`)
+- 想定用途: Workers の `fetch` ハンドラとして `export default app` する最小構成
 
 ## できること
 
@@ -38,12 +39,19 @@ TypeScript 利用時も同じ import で型補完が有効になります。
 - `res.status()`, `res.set()`, `res.send()`, `res.json()`, `res.end()` を使えます。
 - `next(err)` による最小の 500 応答へフォールバックできます。
 
-## まだできないこと / 制約
+## 既知の制約
 
 - `express.Router()` や `app.route()` には未対応です。
 - cookie / CORS helper や static 配信は未対応です。
-- 既定挙動は Express 互換を志向しますが、完全互換ではありません。
 - Node.js の HTTP サーバー実装としての Express 互換実行は対象外です。
+
+## Express との差分
+
+- Express 互換を志向しますが、完全互換ではありません。
+- 実行対象は Cloudflare Workers に限定し、Node.js の `http.Server` は扱いません。
+- ルーティング API は MVP の最小セットに絞っており、`express.Router()` と `app.route()` は未対応です。
+- method 不一致時にコアが `405 Method Not Allowed` を自動では返しません。
+- `next(err)` は最小の 500 応答へフォールバックし、Express の詳細なエラーハンドリング機構は未実装です。
 
 ## 安定性と互換性
 
