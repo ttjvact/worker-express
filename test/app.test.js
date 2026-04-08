@@ -101,16 +101,78 @@ test('middleware execution order', async () => {
   assert.deepEqual(await response.json(), ['m1', 'm2', 'handler']);
 });
 
-// 検証対象: ルート内で next() した fallthrough が 204 / 空本文になる処理。
-test('fallthrough returns a valid 204 response with no body', async () => {
+// 検証対象: ルート一致後に next() のみで応答未送信の場合、fallthrough を 404 に寄せる処理。
+test('fallthrough after matched route returns 404', async () => {
   const app = express();
 
   app.get('/fallthrough', (req, res, next) => next());
 
   const response = await app.fetch(new Request('https://example.com/fallthrough'));
 
-  assert.equal(response.status, 204);
-  assert.equal(await response.text(), '');
+  assert.equal(response.status, 404);
+  assert.equal(await response.text(), 'Not Found');
+});
+
+// 検証対象: send 後に status/set を呼んでも確定済みレスポンス状態が変わらない処理。
+test('status/set after send does not mutate finalized response', async () => {
+  const app = express();
+
+  app.get('/frozen-send', (req, res) => {
+    res.send('locked');
+    res.status(201).set('x-late', 'ignored');
+  });
+
+  const response = await app.fetch(new Request('https://example.com/frozen-send'));
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('x-late'), null);
+  assert.equal(await response.text(), 'locked');
+});
+
+// 検証対象: json 実行前に content-type が設定済みなら上書きせずに維持する処理。
+test('json keeps pre-set content-type header', async () => {
+  const app = express();
+
+  app.get('/json-content-type', (req, res) => {
+    res.set('content-type', 'application/problem+json');
+    res.json({ ok: true });
+  });
+
+  const response = await app.fetch(new Request('https://example.com/json-content-type'));
+
+  assert.equal(response.headers.get('content-type'), 'application/problem+json');
+  assert.deepEqual(await response.json(), { ok: true });
+});
+
+// 検証対象: end は低レベル API として暗黙の content-type 補完を行わない処理。
+test('end does not infer content-type automatically', async () => {
+  const app = express();
+
+  app.get('/end-raw', (req, res) => {
+    res.end(new Uint8Array([112, 108, 97, 105, 110]));
+  });
+
+  const response = await app.fetch(new Request('https://example.com/end-raw'));
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), null);
+  assert.equal(await response.text(), 'plain');
+});
+
+// 検証対象: end 後に status/set を呼んでもヘッダとステータスが変わらない処理。
+test('status/set after end does not mutate finalized response', async () => {
+  const app = express();
+
+  app.get('/frozen-end', (req, res) => {
+    res.status(202).end('done');
+    res.status(204).set('x-late', 'ignored');
+  });
+
+  const response = await app.fetch(new Request('https://example.com/frozen-end'));
+
+  assert.equal(response.status, 202);
+  assert.equal(response.headers.get('x-late'), null);
+  assert.equal(await response.text(), 'done');
 });
 
 // 検証対象: 異常系として next(err) が統一 500 応答へ変換される処理。

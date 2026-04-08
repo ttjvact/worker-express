@@ -19,7 +19,7 @@ export interface WorkerExpressResponse {
   set(name: string, value: string): WorkerExpressResponse;
   send(payload?: unknown): WorkerExpressResponse;
   json(data: unknown): WorkerExpressResponse;
-  end(payload?: unknown): WorkerExpressResponse;
+  end(payload?: BodyInit | null): WorkerExpressResponse;
   toResponse(): Response;
 }
 
@@ -88,42 +88,51 @@ function createResponseToolkit(): WorkerExpressResponse {
   let body: BodyInit | null | undefined;
   let finalized = false;
 
+  const finalize = (nextBody?: BodyInit | null): void => {
+    body = nextBody;
+    finalized = true;
+    res.headersSent = true;
+  };
+
   const res: WorkerExpressResponse = {
     headersSent: false,
     status(code) {
+      if (finalized) return this;
       statusCode = code;
       return this;
     },
     set(name, value) {
+      if (finalized) return this;
       headers.set(name, value);
       return this;
     },
     send(payload = '') {
       if (finalized) return this;
+      // 目的: send は文字列表現を返す高レベル API とし、既定 content-type を補完する。
       // 処理: 文字列以外は文字列表現へ寄せ、text/plain を既定の content-type として扱う。
-      body = typeof payload === 'string' ? payload : String(payload);
+      const nextBody = typeof payload === 'string' ? payload : String(payload);
       if (!headers.has('content-type')) {
         headers.set('content-type', 'text/plain; charset=utf-8');
       }
-      finalized = true;
-      this.headersSent = true;
+      finalize(nextBody);
       return this;
     },
     json(data) {
       if (finalized) return this;
-      // 処理: JSON 応答時は content-type を明示し、send と同様にここでレスポンスを確定する。
-      body = JSON.stringify(data);
-      headers.set('content-type', 'application/json; charset=utf-8');
-      finalized = true;
-      this.headersSent = true;
+      // 目的: 明示指定された content-type を優先し、未指定時のみ JSON の既定値を補完する。
+      // 処理: JSON 本文を生成し、header 未設定なら application/json を付与する。
+      const nextBody = JSON.stringify(data);
+      if (!headers.has('content-type')) {
+        headers.set('content-type', 'application/json; charset=utf-8');
+      }
+      finalize(nextBody);
       return this;
     },
     end(payload) {
-      if (payload !== undefined && payload !== null) {
-        return this.send(payload);
-      }
-      finalized = true;
-      this.headersSent = true;
+      if (finalized) return this;
+      // 目的: end は低レベル API として扱い、send/json のような暗黙変換をしない。
+      // 処理: 渡された BodyInit をそのまま確定し、content-type の自動補完は行わない。
+      finalize(payload);
       return this;
     },
     toResponse() {
@@ -254,8 +263,9 @@ function express(): WorkerExpressApp {
         if (!handler) {
           if (!res.headersSent) {
             if (isRouteMatched) {
-              // 処理: ルートには到達したが未送信の場合は、fallthrough を 204 で明示する。
-              res.status(204).end();
+              // 目的: ルート一致後に未送信でチェーン終了した場合は、Express ライクに 404 を返す。
+              // 処理: ルートは一致していても本文未送信なら fallthrough とみなし Not Found に寄せる。
+              res.status(404).send('Not Found');
             } else {
               // 処理: ルート不一致時は既定の 404 応答を返す。
               res.status(404).send('Not Found');

@@ -38,6 +38,7 @@ TypeScript 利用時も同じ import で型補完が有効になります。
 - path params と `req.query` を扱えます。
 - `res.status()`, `res.set()`, `res.send()`, `res.json()`, `res.end()` を使えます。
 - `next(err)` による最小の 500 応答へフォールバックできます。
+- ルート一致後に未送信のまま `next()` で終わる fallthrough は 404 を返します。
 
 ## 既知の制約
 
@@ -52,6 +53,9 @@ TypeScript 利用時も同じ import で型補完が有効になります。
 - ルーティング API は MVP の最小セットに絞っており、`express.Router()` と `app.route()` は未対応です。
 - method 不一致時にコアが `405 Method Not Allowed` を自動では返しません。
 - `next(err)` は最小の 500 応答へフォールバックし、Express の詳細なエラーハンドリング機構は未実装です。
+- `send/json/end` の実行後は `headersSent` が `true` になり、`status/set` による後続変更は反映されません。
+- `res.json()` は `content-type` 未設定時のみ `application/json; charset=utf-8` を補完し、事前設定済みならその値を維持します。
+- `res.end()` は低レベル API として暗黙の本文変換・`content-type` 補完を行いません。
 
 ## 安定性と互換性
 
@@ -65,7 +69,7 @@ TypeScript 利用時も同じ import で型補完が有効になります。
 - `app.use(middleware)`
 - `app.get/post/put/patch/delete(path, ...handlers)`
 - `req.method`, `req.url`, `req.path`, `req.query`, `req.params`, `req.headers`, `req.body`
-- `res.status(code)`, `res.set(name, value)`, `res.send(body)`, `res.json(data)`, `res.end()`
+- `res.status(code)`, `res.set(name, value)`, `res.send(body)`, `res.json(data)`, `res.end(body?)`
 - `next(err)` による 500 応答
 
 ## Cloudflare Workers での実行

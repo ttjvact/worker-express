@@ -50,6 +50,17 @@ app.get('/users/:id', (req, res) => {
 });
 ```
 
+### 2.3 fallthrough の既定挙動
+
+ルートが一致していても、ハンドラ連鎖の最後まで `res.send()/res.json()/res.end()` などで応答確定しない場合は `404 Not Found` を返します。
+
+```js
+app.get('/users/:id', (req, res, next) => {
+  if (req.params.id === '42') return res.send('ok');
+  return next(); // 応答未送信のまま chain が終わると 404
+});
+```
+
 ---
 
 ## 3. ミドルウェア
@@ -108,7 +119,7 @@ app.post('/echo', (req, res) => {
 - `res.set(name, value)`
 - `res.send(body)`
 - `res.json(data)`
-- `res.end()`
+- `res.end(body?)`
 
 ```js
 app.get('/custom', (req, res) => {
@@ -116,6 +127,34 @@ app.get('/custom', (req, res) => {
     .status(200)
     .set('x-powered-by', 'worker-express')
     .json({ message: 'ok' });
+});
+```
+
+### 5.1 `headersSent` と状態凍結
+
+`send/json/end` を呼んだ後は `headersSent === true` になり、以降の `status/set` は反映されません。
+
+```js
+app.get('/frozen', (req, res) => {
+  res.send('locked');
+  res.status(201).set('x-late', 'ignored'); // 変更されない
+});
+```
+
+### 5.2 `content-type` の規則
+
+- `res.send()` は `content-type` 未指定時のみ `text/plain; charset=utf-8` を補完します。
+- `res.json()` は `content-type` 未指定時のみ `application/json; charset=utf-8` を補完します。
+- `res.json()` 実行前に `content-type` を明示設定している場合は、その値を維持します。
+
+### 5.3 `res.send` と `res.end` の責務差分
+
+- `res.send()` は高レベル API です。文字列化と `content-type` 補完を行います。
+- `res.end()` は低レベル API です。渡した本文をそのまま使い、`content-type` は自動補完しません。
+
+```js
+app.get('/raw-end', (req, res) => {
+  res.end('raw-body');
 });
 ```
 
