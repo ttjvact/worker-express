@@ -223,17 +223,26 @@ function express(): WorkerExpressApp {
       return this;
     },
     async fetch(request, env, ctx) {
+      // 目的: 受信した Request を解析し、ミドルウェアとルートハンドラの実行チェーンを開始する。
       const url = new URL(request.url);
       const path = normalizePath(url.pathname);
-      const matched = routes.find((route) => route.method === request.method && matchRoute(route, path));
-      const isRouteMatched = Boolean(matched);
+
+      // 処理: ルート一致確認と params 抽出を一括で行い、重複計算を避ける。
+      let matchedParams: Record<string, string> | null = null;
+      const matchedRoute = routes.find((route) => {
+        if (route.method !== request.method) return false;
+        matchedParams = matchRoute(route, path);
+        return matchedParams !== null;
+      });
+
+      const isRouteMatched = Boolean(matchedRoute);
 
       const req: WorkerExpressRequest = {
         method: request.method,
         url: request.url,
         path,
         query: parseQuery(url.searchParams),
-        params: {},
+        params: matchedParams || {},
         headers: request.headers,
         body: await parseBody(request),
         raw: request,
@@ -242,12 +251,12 @@ function express(): WorkerExpressApp {
       };
 
       const res = createResponseToolkit();
-      req.params = matched ? matchRoute(matched, path) || {} : {};
-      const stack = [...middlewares, ...(matched?.handlers ?? [])];
+      const stack = [...middlewares, ...(matchedRoute?.handlers ?? [])];
 
       let index = -1;
 
       const dispatch = async (i: number, err?: unknown): Promise<Response> => {
+        // 目的: ミドルウェア/ハンドラの実行順序を制御し、二重呼び出しを防止する。
         if (i <= index) throw new Error('next() called multiple times');
         index = i;
 
@@ -261,15 +270,9 @@ function express(): WorkerExpressApp {
 
         const handler = stack[i];
         if (!handler) {
+          // 目的: スタック終了時に未送信なら、状況に応じて 404 を返す。
           if (!res.headersSent) {
-            if (isRouteMatched) {
-              // 目的: ルート一致後に未送信でチェーン終了した場合は、Express ライクに 404 を返す。
-              // 処理: ルートは一致していても本文未送信なら fallthrough とみなし Not Found に寄せる。
-              res.status(404).send('Not Found');
-            } else {
-              // 処理: ルート不一致時は既定の 404 応答を返す。
-              res.status(404).send('Not Found');
-            }
+            res.status(404).send('Not Found');
           }
           return res.toResponse();
         }
@@ -277,9 +280,10 @@ function express(): WorkerExpressApp {
         try {
           let nextCalled = false;
           let nextResult: Promise<Response> | undefined;
+
+          // 処理: ハンドラを実行し、next() が呼ばれた場合のみ後続へ進むよう制御する。
           const maybePromise = handler(req, res, (nextErr) => {
             nextCalled = true;
-            // 処理: next() は次ハンドラの dispatch Promise を返し、非同期連鎖を維持する。
             nextResult = dispatch(i + 1, nextErr);
             return nextResult;
           });
@@ -289,15 +293,9 @@ function express(): WorkerExpressApp {
             return nextResult as Promise<Response>;
           }
 
-          if (res.headersSent) {
-            return res.toResponse();
-          }
-
-          if (i === stack.length - 1) {
-            return res.toResponse();
-          }
-
-          return dispatch(i + 1);
+          // 目的: next() が呼ばれず、かつ headersSent も false の場合、後続を呼ばずに現在の状態を返す。
+          // これにより、ミドルウェアが応答も next() も行わない場合に勝手に次へ進むのを防ぐ。
+          return res.toResponse();
         } catch {
           return new Response('Internal Server Error', {
             status: 500,
