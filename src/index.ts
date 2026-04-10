@@ -293,8 +293,11 @@ function express(): WorkerExpressApp {
             return nextResult as Promise<Response>;
           }
 
-          // 目的: next() が呼ばれず、かつ headersSent も false の場合、後続を呼ばずに現在の状態を返す。
-          // これにより、ミドルウェアが応答も next() も行わない場合に勝手に次へ進むのを防ぐ。
+          // 目的: next() 未呼び出しかつ未送信の停止は成功扱いにせず、404 fallthrough を返す。
+          // 処理: チェーンはここで止めるが、未処理リクエストとして最終 404 と同じ応答に揃える。
+          if (!res.headersSent) {
+            res.status(404).send('Not Found');
+          }
           return res.toResponse();
         } catch {
           return new Response('Internal Server Error', {

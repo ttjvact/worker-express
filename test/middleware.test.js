@@ -22,8 +22,10 @@ test('should NOT proceed to next middleware if next() is not called', async () =
     res.send('ok');
   });
 
-  await app.fetch(new Request('https://example.com/'));
+  const response = await app.fetch(new Request('https://example.com/'));
 
   // next() が呼ばれていないため、m2 や handler は実行されないはず。
   assert.deepEqual(order, ['m1']);
+  assert.equal(response.status, 404);
+  assert.equal(await response.text(), 'Not Found');
 });
