@@ -1,4 +1,6 @@
-export type NextFunction = (err?: unknown) => Promise<Response> | Response | void;
+export type NextFunction = (
+  err?: unknown,
+) => Promise<Response> | Response | void;
 
 export interface WorkerExpressRequest {
   method: string;
@@ -42,17 +44,21 @@ interface Route extends CompiledPath {
 
 function normalizePath(path: string): string {
   // 目的: ルート定義と実リクエストの比較を安定化するため、末尾スラッシュ差分を吸収する。
-  if (!path) return '/';
-  if (path.length > 1 && path.endsWith('/')) return path.slice(0, -1);
+  if (!path) return "/";
+  if (path.length > 1 && path.endsWith("/")) return path.slice(0, -1);
   return path;
 }
 
-function parseQuery(searchParams: URLSearchParams): Record<string, string | string[]> {
+function parseQuery(
+  searchParams: URLSearchParams,
+): Record<string, string | string[]> {
   const query: Record<string, string | string[]> = {};
   for (const [key, value] of searchParams.entries()) {
     if (Object.hasOwn(query, key)) {
       const current = query[key];
-      query[key] = Array.isArray(current) ? [...current, value] : [current, value];
+      query[key] = Array.isArray(current)
+        ? [...current, value]
+        : [current, value];
     } else {
       query[key] = value;
     }
@@ -64,16 +70,16 @@ function compilePath(path: string): CompiledPath {
   // 目的: `:id` のようなパスパラメータを正規表現に変換し、実行時マッチングを高速化する。
   const keys: string[] = [];
   const escaped = path
-    .split('/')
+    .split("/")
     .map((segment) => {
-      if (!segment) return '';
-      if (segment.startsWith(':')) {
+      if (!segment) return "";
+      if (segment.startsWith(":")) {
         keys.push(segment.slice(1));
-        return '([^/]+)';
+        return "([^/]+)";
       }
-      return segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     })
-    .join('/');
+    .join("/");
 
   return {
     keys,
@@ -106,13 +112,13 @@ function createResponseToolkit(): WorkerExpressResponse {
       headers.set(name, value);
       return this;
     },
-    send(payload = '') {
+    send(payload = "") {
       if (finalized) return this;
       // 目的: send は文字列表現を返す高レベル API とし、既定 content-type を補完する。
       // 処理: 文字列以外は文字列表現へ寄せ、text/plain を既定の content-type として扱う。
-      const nextBody = typeof payload === 'string' ? payload : String(payload);
-      if (!headers.has('content-type')) {
-        headers.set('content-type', 'text/plain; charset=utf-8');
+      const nextBody = typeof payload === "string" ? payload : String(payload);
+      if (!headers.has("content-type")) {
+        headers.set("content-type", "text/plain; charset=utf-8");
       }
       finalize(nextBody);
       return this;
@@ -122,8 +128,8 @@ function createResponseToolkit(): WorkerExpressResponse {
       // 目的: 明示指定された content-type を優先し、未指定時のみ JSON の既定値を補完する。
       // 処理: JSON 本文を生成し、header 未設定なら application/json を付与する。
       const nextBody = JSON.stringify(data);
-      if (!headers.has('content-type')) {
-        headers.set('content-type', 'application/json; charset=utf-8');
+      if (!headers.has("content-type")) {
+        headers.set("content-type", "application/json; charset=utf-8");
       }
       finalize(nextBody);
       return this;
@@ -144,7 +150,10 @@ function createResponseToolkit(): WorkerExpressResponse {
   return res;
 }
 
-function matchRoute(route: CompiledPath, path: string): Record<string, string> | null {
+function matchRoute(
+  route: CompiledPath,
+  path: string,
+): Record<string, string> | null {
   // 目的: 正規表現マッチ結果を `req.params` で扱えるキー付きオブジェクトへ変換する。
   const match = route.pattern.exec(path);
   if (!match) return null;
@@ -157,12 +166,12 @@ function matchRoute(route: CompiledPath, path: string): Record<string, string> |
 
 async function parseBody(request: Request): Promise<unknown> {
   // 目的: メソッドと content-type に応じて req.body を最小限で解釈する。
-  if (request.method === 'GET' || request.method === 'HEAD') {
+  if (request.method === "GET" || request.method === "HEAD") {
     return undefined;
   }
 
-  const contentType = request.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
+  const contentType = request.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
     try {
       return await request.clone().json();
     } catch {
@@ -203,23 +212,23 @@ function express(): WorkerExpressApp {
       return this;
     },
     get(path, ...handlers) {
-      register('GET', path, handlers);
+      register("GET", path, handlers);
       return this;
     },
     post(path, ...handlers) {
-      register('POST', path, handlers);
+      register("POST", path, handlers);
       return this;
     },
     put(path, ...handlers) {
-      register('PUT', path, handlers);
+      register("PUT", path, handlers);
       return this;
     },
     patch(path, ...handlers) {
-      register('PATCH', path, handlers);
+      register("PATCH", path, handlers);
       return this;
     },
     delete(path, ...handlers) {
-      register('DELETE', path, handlers);
+      register("DELETE", path, handlers);
       return this;
     },
     async fetch(request, env, ctx) {
@@ -234,8 +243,6 @@ function express(): WorkerExpressApp {
         matchedParams = matchRoute(route, path);
         return matchedParams !== null;
       });
-
-      const isRouteMatched = Boolean(matchedRoute);
 
       const req: WorkerExpressRequest = {
         method: request.method,
@@ -257,14 +264,14 @@ function express(): WorkerExpressApp {
 
       const dispatch = async (i: number, err?: unknown): Promise<Response> => {
         // 目的: ミドルウェア/ハンドラの実行順序を制御し、二重呼び出しを防止する。
-        if (i <= index) throw new Error('next() called multiple times');
+        if (i <= index) throw new Error("next() called multiple times");
         index = i;
 
         if (err) {
           // 処理: 現状は統一エラーハンドラ未実装のため、next(err) は即時 500 へ集約する。
-          return new Response('Internal Server Error', {
+          return new Response("Internal Server Error", {
             status: 500,
-            headers: { 'content-type': 'text/plain; charset=utf-8' },
+            headers: { "content-type": "text/plain; charset=utf-8" },
           });
         }
 
@@ -272,7 +279,7 @@ function express(): WorkerExpressApp {
         if (!handler) {
           // 目的: スタック終了時に未送信なら、状況に応じて 404 を返す。
           if (!res.headersSent) {
-            res.status(404).send('Not Found');
+            res.status(404).send("Not Found");
           }
           return res.toResponse();
         }
@@ -296,13 +303,13 @@ function express(): WorkerExpressApp {
           // 目的: next() 未呼び出しかつ未送信の停止は成功扱いにせず、404 fallthrough を返す。
           // 処理: チェーンはここで止めるが、未処理リクエストとして最終 404 と同じ応答に揃える。
           if (!res.headersSent) {
-            res.status(404).send('Not Found');
+            res.status(404).send("Not Found");
           }
           return res.toResponse();
         } catch {
-          return new Response('Internal Server Error', {
+          return new Response("Internal Server Error", {
             status: 500,
-            headers: { 'content-type': 'text/plain; charset=utf-8' },
+            headers: { "content-type": "text/plain; charset=utf-8" },
           });
         }
       };
