@@ -1,6 +1,6 @@
 {
   "name": "worker-express",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Express-like routing for Cloudflare Workers",
   "license": "MIT",
   "type": "module",
@@ -26,9 +26,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev:hello": "npm run build && wrangler dev --config examples/hello-world/wrangler.jsonc",
-    "test": "npm run build && node --test test/app.test.js test/miniflare.test.js",
+    "test": "npm run build && node --test test/app.test.js test/middleware.test.js test/miniflare.test.js",
     "test:integration": "npm run build && node --test test/miniflare.test.js",
-    "test:unit": "npm run build && node --test test/app.test.js",
+    "test:unit": "npm run build && node --test test/app.test.js test/middleware.test.js",
     "lint": "node scripts/lint.mjs"
   },
   "engines": {
