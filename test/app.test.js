@@ -76,6 +76,20 @@ test('JSON body is parsed into req.body', async () => {
   assert.deepEqual(await response.json(), { ok: true });
 });
 
+
+// 検証対象: GET リクエストでは本文を解析せず req.body を undefined にする処理。
+test('GET request keeps req.body undefined', async () => {
+  const app = express();
+
+  app.get('/body-check', (req, res) => {
+    res.json({ hasBody: req.body !== undefined });
+  });
+
+  const response = await app.fetch(new Request('https://example.com/body-check'));
+
+  assert.deepEqual(await response.json(), { hasBody: false });
+});
+
 // 検証対象: 複数ミドルウェアとルートハンドラの実行順序を維持する処理。
 test('middleware execution order', async () => {
   const app = express();
