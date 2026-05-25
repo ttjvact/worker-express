@@ -1,18 +1,22 @@
-export type NextFunction = (
-  err?: unknown,
+export type NextFunction<TErr = unknown> = (
+  err?: TErr,
 ) => Promise<Response> | Response | void;
 
-export interface WorkerExpressRequest {
+export interface WorkerExpressRequest<
+  TEnv = unknown,
+  TBody = unknown,
+  TCtx = unknown,
+> {
   method: string;
   url: string;
   path: string;
   query: Record<string, string | string[]>;
   params: Record<string, string>;
   headers: Headers;
-  body: unknown;
+  body: TBody;
   raw: Request;
-  env: unknown;
-  ctx: unknown;
+  env: TEnv;
+  ctx: TCtx;
 }
 
 export interface WorkerExpressResponse {
@@ -25,10 +29,15 @@ export interface WorkerExpressResponse {
   toResponse(): Response;
 }
 
-export type Handler = (
-  req: WorkerExpressRequest,
+export type Handler<
+  TEnv = unknown,
+  TBody = unknown,
+  TCtx = unknown,
+  TErr = unknown,
+> = (
+  req: WorkerExpressRequest<TEnv, TBody, TCtx>,
   res: WorkerExpressResponse,
-  next: NextFunction,
+  next: NextFunction<TErr>,
 ) => Promise<unknown> | unknown;
 
 interface CompiledPath {
@@ -36,10 +45,15 @@ interface CompiledPath {
   pattern: RegExp;
 }
 
-interface Route extends CompiledPath {
+interface Route<
+  TEnv = unknown,
+  TBody = unknown,
+  TCtx = unknown,
+  TErr = unknown,
+> extends CompiledPath {
   method: string;
   path: string;
-  handlers: Handler[];
+  handlers: Handler<TEnv, TBody, TCtx, TErr>[];
 }
 
 function normalizePath(path: string): string {
@@ -183,21 +197,52 @@ async function parseBody(request: Request): Promise<unknown> {
   return text.length > 0 ? text : undefined;
 }
 
-interface WorkerExpressApp {
-  use(...handlers: Handler[]): WorkerExpressApp;
-  get(path: string, ...handlers: Handler[]): WorkerExpressApp;
-  post(path: string, ...handlers: Handler[]): WorkerExpressApp;
-  put(path: string, ...handlers: Handler[]): WorkerExpressApp;
-  patch(path: string, ...handlers: Handler[]): WorkerExpressApp;
-  delete(path: string, ...handlers: Handler[]): WorkerExpressApp;
-  fetch(request: Request, env?: unknown, ctx?: unknown): Promise<Response>;
+interface WorkerExpressApp<
+  TEnv = unknown,
+  TBody = unknown,
+  TCtx = unknown,
+  TErr = unknown,
+> {
+  use(
+    ...handlers: Handler<TEnv, TBody, TCtx, TErr>[]
+  ): WorkerExpressApp<TEnv, TBody, TCtx, TErr>;
+  get(
+    path: string,
+    ...handlers: Handler<TEnv, TBody, TCtx, TErr>[]
+  ): WorkerExpressApp<TEnv, TBody, TCtx, TErr>;
+  post(
+    path: string,
+    ...handlers: Handler<TEnv, TBody, TCtx, TErr>[]
+  ): WorkerExpressApp<TEnv, TBody, TCtx, TErr>;
+  put(
+    path: string,
+    ...handlers: Handler<TEnv, TBody, TCtx, TErr>[]
+  ): WorkerExpressApp<TEnv, TBody, TCtx, TErr>;
+  patch(
+    path: string,
+    ...handlers: Handler<TEnv, TBody, TCtx, TErr>[]
+  ): WorkerExpressApp<TEnv, TBody, TCtx, TErr>;
+  delete(
+    path: string,
+    ...handlers: Handler<TEnv, TBody, TCtx, TErr>[]
+  ): WorkerExpressApp<TEnv, TBody, TCtx, TErr>;
+  fetch(request: Request, env?: TEnv, ctx?: TCtx): Promise<Response>;
 }
 
-function express(): WorkerExpressApp {
-  const middlewares: Handler[] = [];
-  const routes: Route[] = [];
+function express<
+  TEnv = unknown,
+  TBody = unknown,
+  TCtx = unknown,
+  TErr = unknown,
+>(): WorkerExpressApp<TEnv, TBody, TCtx, TErr> {
+  const middlewares: Handler<TEnv, TBody, TCtx, TErr>[] = [];
+  const routes: Route<TEnv, TBody, TCtx, TErr>[] = [];
 
-  function register(method: string, path: string, handlers: Handler[]): void {
+  function register(
+    method: string,
+    path: string,
+    handlers: Handler<TEnv, TBody, TCtx, TErr>[],
+  ): void {
     if (!handlers.length) {
       throw new Error(`No handlers provided for ${method} ${path}`);
     }
@@ -206,8 +251,8 @@ function express(): WorkerExpressApp {
     routes.push({ method, path: normalizedPath, keys, pattern, handlers });
   }
 
-  const app: WorkerExpressApp = {
-    use(...handlers) {
+  const app: WorkerExpressApp<TEnv, TBody, TCtx, TErr> = {
+    use(...handlers: Handler<TEnv, TBody, TCtx, TErr>[]) {
       middlewares.push(...handlers);
       return this;
     },
@@ -231,7 +276,7 @@ function express(): WorkerExpressApp {
       register("DELETE", path, handlers);
       return this;
     },
-    async fetch(request, env, ctx) {
+    async fetch(request: Request, env?: TEnv, ctx?: TCtx) {
       // 目的: 受信した Request を解析し、ミドルウェアとルートハンドラの実行チェーンを開始する。
       const url = new URL(request.url);
       const path = normalizePath(url.pathname);
@@ -244,17 +289,17 @@ function express(): WorkerExpressApp {
         return matchedParams !== null;
       });
 
-      const req: WorkerExpressRequest = {
+      const req: WorkerExpressRequest<TEnv, TBody, TCtx> = {
         method: request.method,
         url: request.url,
         path,
         query: parseQuery(url.searchParams),
         params: matchedParams || {},
         headers: request.headers,
-        body: await parseBody(request),
+        body: (await parseBody(request)) as TBody,
         raw: request,
-        env,
-        ctx,
+        env: env as TEnv,
+        ctx: ctx as TCtx,
       };
 
       const res = createResponseToolkit();
@@ -262,7 +307,7 @@ function express(): WorkerExpressApp {
 
       let index = -1;
 
-      const dispatch = async (i: number, err?: unknown): Promise<Response> => {
+      const dispatch = async (i: number, err?: TErr): Promise<Response> => {
         // 目的: ミドルウェア/ハンドラの実行順序を制御し、二重呼び出しを防止する。
         if (i <= index) throw new Error("next() called multiple times");
         index = i;
