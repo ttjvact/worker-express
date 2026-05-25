@@ -90,8 +90,8 @@ test('GET request keeps req.body undefined', async () => {
   assert.deepEqual(await response.json(), { hasBody: false });
 });
 
-// 検証対象: fetch に env/ctx を渡さない場合、req.env と req.ctx が undefined のままになる処理。
-test('fetch without env/ctx keeps req.env and req.ctx undefined', async () => {
+// 検証対象: fetch に env を渡さなくても、req.env が undefined にならない処理。
+test('fetch without env uses default env and leaves req.ctx undefined', async () => {
   const app = express();
 
   app.get('/context-check', (req, res) => {
@@ -104,7 +104,7 @@ test('fetch without env/ctx keeps req.env and req.ctx undefined', async () => {
   const response = await app.fetch(new Request('https://example.com/context-check'));
 
   assert.deepEqual(await response.json(), {
-    envUndefined: true,
+    envUndefined: false,
     ctxUndefined: true,
   });
 });
