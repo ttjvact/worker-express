@@ -13,10 +13,10 @@ export interface WorkerExpressRequest<
   query: Record<string, string | string[]>;
   params: Record<string, string>;
   headers: Headers;
-  body: TBody;
+  body: TBody | undefined;
   raw: Request;
-  env: TEnv;
-  ctx: TCtx;
+  env: TEnv | undefined;
+  ctx: TCtx | undefined;
 }
 
 export interface WorkerExpressResponse {

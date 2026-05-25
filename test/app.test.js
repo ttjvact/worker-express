@@ -76,6 +76,39 @@ test('JSON body is parsed into req.body', async () => {
   assert.deepEqual(await response.json(), { ok: true });
 });
 
+
+// 検証対象: GET リクエストでは本文を解析せず req.body を undefined にする処理。
+test('GET request keeps req.body undefined', async () => {
+  const app = express();
+
+  app.get('/body-check', (req, res) => {
+    res.json({ hasBody: req.body !== undefined });
+  });
+
+  const response = await app.fetch(new Request('https://example.com/body-check'));
+
+  assert.deepEqual(await response.json(), { hasBody: false });
+});
+
+// 検証対象: fetch に env/ctx を渡さない場合、req.env と req.ctx が undefined のままになる処理。
+test('fetch without env/ctx keeps req.env and req.ctx undefined', async () => {
+  const app = express();
+
+  app.get('/context-check', (req, res) => {
+    res.json({
+      envUndefined: req.env === undefined,
+      ctxUndefined: req.ctx === undefined,
+    });
+  });
+
+  const response = await app.fetch(new Request('https://example.com/context-check'));
+
+  assert.deepEqual(await response.json(), {
+    envUndefined: true,
+    ctxUndefined: true,
+  });
+});
+
 // 検証対象: 複数ミドルウェアとルートハンドラの実行順序を維持する処理。
 test('middleware execution order', async () => {
   const app = express();
