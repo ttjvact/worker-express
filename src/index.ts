@@ -15,7 +15,7 @@ export interface WorkerExpressRequest<
   headers: Headers;
   body: TBody | undefined;
   raw: Request;
-  env: TEnv | undefined;
+  env: TEnv;
   ctx: TCtx | undefined;
 }
 
@@ -276,8 +276,8 @@ function express<
       register("DELETE", path, handlers);
       return this;
     },
-    async fetch(request: Request, env?: TEnv, ctx?: TCtx) {
-      // 目的: 受信した Request を解析し、ミドルウェアとルートハンドラの実行チェーンを開始する。
+    async fetch(request: Request, env: TEnv = {} as TEnv, ctx?: TCtx) {
+      // 目的: Worker 環境では env が必ず渡されるが、テストや他用途でも undefined にならないようにする。
       const url = new URL(request.url);
       const path = normalizePath(url.pathname);
 
@@ -298,8 +298,8 @@ function express<
         headers: request.headers,
         body: (await parseBody(request)) as TBody,
         raw: request,
-        env: env as TEnv,
-        ctx: ctx as TCtx,
+        env,
+        ctx,
       };
 
       const res = createResponseToolkit();
