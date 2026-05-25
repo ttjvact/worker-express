@@ -15,8 +15,8 @@ export interface WorkerExpressRequest<
   headers: Headers;
   body: TBody | undefined;
   raw: Request;
-  env: TEnv;
-  ctx: TCtx;
+  env: TEnv | undefined;
+  ctx: TCtx | undefined;
 }
 
 export interface WorkerExpressResponse {
