@@ -124,6 +124,10 @@ function createWorkerExpressFile(
   };
 }
 
+function isJsonMediaType(mediaType: string): boolean {
+  return mediaType === "application/json" || mediaType.endsWith("+json");
+}
+
 function compilePath(path: string): CompiledPath {
   // 目的: `:id` のようなパスパラメータを正規表現に変換し、実行時マッチングを高速化する。
   const keys: string[] = [];
@@ -232,7 +236,7 @@ async function parseBody(request: Request): Promise<ParsedBody> {
     .split(";")[0]
     .trim()
     .toLowerCase();
-  if (mediaType === "application/json") {
+  if (isJsonMediaType(mediaType)) {
     try {
       return { body: await request.clone().json(), files: [] };
     } catch {

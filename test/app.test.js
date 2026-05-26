@@ -82,6 +82,28 @@ test('JSON body is parsed into req.body', async () => {
   });
 });
 
+// 検証対象: application/*+json のリクエスト本文を JSON として req.body へ反映する処理。
+test('structured JSON media type is parsed into req.body', async () => {
+  const app = express();
+  app.patch('/patch', (req, res) => res.json({
+    body: req.body,
+    files: req.files,
+  }));
+
+  const response = await app.fetch(
+    new Request('https://example.com/patch', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json-patch+json' },
+      body: JSON.stringify([{ op: 'replace', path: '/name', value: 'next' }]),
+    }),
+  );
+
+  assert.deepEqual(await response.json(), {
+    body: [{ op: 'replace', path: '/name', value: 'next' }],
+    files: [],
+  });
+});
+
 // 検証対象: application/x-www-form-urlencoded の本文を plain object へ変換し、同名キーを配列化する処理。
 test('URL-encoded body is parsed into an object', async () => {
   const app = express();
