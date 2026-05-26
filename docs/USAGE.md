@@ -91,7 +91,8 @@ app.get('/debug', (req, res) => {
 - `req.query`
 - `req.params`
 - `req.headers`
-- `req.body`（JSON / text）
+- `req.body`（JSON / text / urlencoded / multipart のテキスト項目）
+- `req.files`（multipart のファイル項目）
 
 ### 4.1 クエリ文字列
 
@@ -108,6 +109,37 @@ app.get('/search', (req, res) => {
 ```js
 app.post('/echo', (req, res) => {
   res.json({ received: req.body });
+});
+```
+
+### 4.3 フォームボディ
+
+`application/x-www-form-urlencoded` は plain object として `req.body` に入ります。同名キーが複数ある場合は配列になります。
+
+```js
+app.post('/form', (req, res) => {
+  res.json({ fields: req.body });
+});
+```
+
+`multipart/form-data` はテキスト項目を `req.body`、ファイル項目を `req.files` に分離します。単一ファイルは `req.files[0]` で取得できます。
+
+```js
+app.post('/upload', async (req, res) => {
+  const file = req.files[0];
+
+  res.json({
+    fields: req.body,
+    file: file
+      ? {
+          fieldName: file.fieldName,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          text: await file.text(),
+        }
+      : null,
+  });
 });
 ```
 

@@ -36,6 +36,8 @@ TypeScript 利用時も同じ import で型補完が有効になります。
 - Cloudflare Workers で Express 風の最小ルーティングを組めます。
 - `app.use()` によるミドルウェア実行ができます。
 - path params と `req.query` を扱えます。
+- JSON / text / urlencoded / multipart form の本文を扱えます。
+- multipart form のファイルを `req.files` から配列で扱えます。
 - `res.status()`, `res.set()`, `res.send()`, `res.json()`, `res.end()` を使えます。
 - `next(err)` による最小の 500 応答へフォールバックできます。
 - ルート一致後に未送信のまま `next()` で終わる fallthrough は 404 を返します。
@@ -53,6 +55,7 @@ TypeScript 利用時も同じ import で型補完が有効になります。
 - ルーティング API は MVP の最小セットに絞っており、`express.Router()` と `app.route()` は未対応です。
 - method 不一致時にコアが `405 Method Not Allowed` を自動では返しません。
 - `next(err)` は最小の 500 応答へフォールバックし、Express の詳細なエラーハンドリング機構は未実装です。
+- multipart form は Express 本体ではなく周辺ミドルウェアが担う領域ですが、本ライブラリでは Workers 向けの標準便利機能としてテキスト項目を `req.body`、ファイルを `req.files` に分離します。
 - `send/json/end` の実行後は `headersSent` が `true` になり、`status/set` による後続変更は反映されません。
 - `res.json()` は `content-type` 未設定時のみ `application/json; charset=utf-8` を補完し、事前設定済みならその値を維持します。
 - `res.end()` は低レベル API として暗黙の本文変換・`content-type` 補完を行いません。
@@ -68,7 +71,7 @@ TypeScript 利用時も同じ import で型補完が有効になります。
 - `express()`
 - `app.use(middleware)`
 - `app.get/post/put/patch/delete(path, ...handlers)`
-- `req.method`, `req.url`, `req.path`, `req.query`, `req.params`, `req.headers`, `req.body`
+- `req.method`, `req.url`, `req.path`, `req.query`, `req.params`, `req.headers`, `req.body`, `req.files`
 - `res.status(code)`, `res.set(name, value)`, `res.send(body)`, `res.json(data)`, `res.end(body?)`
 - `next(err)` による 500 応答
 

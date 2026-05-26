@@ -14,9 +14,21 @@ export interface WorkerExpressRequest<
   params: Record<string, string>;
   headers: Headers;
   body: TBody | undefined;
+  files: WorkerExpressFile[];
   raw: Request;
   env: TEnv;
   ctx: TCtx | undefined;
+}
+
+export interface WorkerExpressFile {
+  fieldName: string;
+  name: string;
+  type: string;
+  size: number;
+  file: File;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  text(): Promise<string>;
+  stream(): ReadableStream<Uint8Array>;
 }
 
 export interface WorkerExpressResponse {
@@ -78,6 +90,38 @@ function parseQuery(
     }
   }
   return query;
+}
+
+type ParsedFields = Record<string, string | string[]>;
+
+interface ParsedBody {
+  body: unknown;
+  files: WorkerExpressFile[];
+}
+
+function appendField(fields: ParsedFields, key: string, value: string): void {
+  if (Object.hasOwn(fields, key)) {
+    const current = fields[key];
+    fields[key] = Array.isArray(current) ? [...current, value] : [current, value];
+  } else {
+    fields[key] = value;
+  }
+}
+
+function createWorkerExpressFile(
+  fieldName: string,
+  file: File,
+): WorkerExpressFile {
+  return {
+    fieldName,
+    name: file.name,
+    type: file.type,
+    size: file.size,
+    file,
+    arrayBuffer: () => file.arrayBuffer(),
+    text: () => file.text(),
+    stream: () => file.stream(),
+  };
 }
 
 function compilePath(path: string): CompiledPath {
@@ -178,23 +222,61 @@ function matchRoute(
   return params;
 }
 
-async function parseBody(request: Request): Promise<unknown> {
-  // 目的: メソッドと content-type に応じて req.body を最小限で解釈する。
+async function parseBody(request: Request): Promise<ParsedBody> {
+  // 目的: メソッドと content-type に応じて req.body/req.files を最小限で解釈する。
   if (request.method === "GET" || request.method === "HEAD") {
-    return undefined;
+    return { body: undefined, files: [] };
   }
 
-  const contentType = request.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
+  const mediaType = (request.headers.get("content-type") || "")
+    .split(";")[0]
+    .trim()
+    .toLowerCase();
+  if (mediaType === "application/json") {
     try {
-      return await request.clone().json();
+      return { body: await request.clone().json(), files: [] };
     } catch {
-      return undefined;
+      return { body: undefined, files: [] };
+    }
+  }
+
+  if (mediaType === "application/x-www-form-urlencoded") {
+    try {
+      const text = await request.clone().text();
+      const fields: ParsedFields = {};
+      for (const [key, value] of new URLSearchParams(text).entries()) {
+        appendField(fields, key, value);
+      }
+      return { body: Object.keys(fields).length > 0 ? fields : undefined, files: [] };
+    } catch {
+      return { body: undefined, files: [] };
+    }
+  }
+
+  if (mediaType === "multipart/form-data") {
+    try {
+      const formData = await request.clone().formData();
+      const fields: ParsedFields = {};
+      const files: WorkerExpressFile[] = [];
+      for (const [key, value] of formData.entries()) {
+        // 目的: Express 利用時の一般的な体験に寄せ、テキスト項目とファイル項目を分離する。
+        if (value instanceof File) {
+          files.push(createWorkerExpressFile(key, value));
+        } else {
+          appendField(fields, key, value);
+        }
+      }
+      return {
+        body: Object.keys(fields).length > 0 ? fields : undefined,
+        files,
+      };
+    } catch {
+      return { body: undefined, files: [] };
     }
   }
 
   const text = await request.clone().text();
-  return text.length > 0 ? text : undefined;
+  return { body: text.length > 0 ? text : undefined, files: [] };
 }
 
 interface WorkerExpressApp<
@@ -289,6 +371,7 @@ function express<
         return matchedParams !== null;
       });
 
+      const parsedBody = await parseBody(request);
       const req: WorkerExpressRequest<TEnv, TBody, TCtx> = {
         method: request.method,
         url: request.url,
@@ -296,7 +379,8 @@ function express<
         query: parseQuery(url.searchParams),
         params: matchedParams || {},
         headers: request.headers,
-        body: (await parseBody(request)) as TBody,
+        body: parsedBody.body as TBody,
+        files: parsedBody.files,
         raw: request,
         env,
         ctx,
