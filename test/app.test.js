@@ -63,7 +63,10 @@ test('req.query is parsed', async () => {
 // 検証対象: application/json のリクエスト本文を req.body へ反映する処理。
 test('JSON body is parsed into req.body', async () => {
   const app = express();
-  app.post('/echo', (req, res) => res.json(req.body));
+  app.post('/echo', (req, res) => res.json({
+    body: req.body,
+    files: req.files,
+  }));
 
   const response = await app.fetch(
     new Request('https://example.com/echo', {
@@ -73,21 +76,169 @@ test('JSON body is parsed into req.body', async () => {
     }),
   );
 
-  assert.deepEqual(await response.json(), { ok: true });
+  assert.deepEqual(await response.json(), {
+    body: { ok: true },
+    files: [],
+  });
 });
 
+// 検証対象: application/*+json のリクエスト本文を JSON として req.body へ反映する処理。
+test('structured JSON media type is parsed into req.body', async () => {
+  const app = express();
+  app.patch('/patch', (req, res) => res.json({
+    body: req.body,
+    files: req.files,
+  }));
 
-// 検証対象: GET リクエストでは本文を解析せず req.body を undefined にする処理。
+  const response = await app.fetch(
+    new Request('https://example.com/patch', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json-patch+json' },
+      body: JSON.stringify([{ op: 'replace', path: '/name', value: 'next' }]),
+    }),
+  );
+
+  assert.deepEqual(await response.json(), {
+    body: [{ op: 'replace', path: '/name', value: 'next' }],
+    files: [],
+  });
+});
+
+// 検証対象: application/x-www-form-urlencoded の本文を plain object へ変換し、同名キーを配列化する処理。
+test('URL-encoded body is parsed into an object', async () => {
+  const app = express();
+  app.post('/urlencoded', (req, res) => res.json({
+    body: req.body,
+    files: req.files,
+  }));
+
+  const response = await app.fetch(
+    new Request('https://example.com/urlencoded', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: 'a=1&b=2&tag=x&tag=y',
+    }),
+  );
+
+  assert.deepEqual(await response.json(), {
+    body: { a: '1', b: '2', tag: ['x', 'y'] },
+    files: [],
+  });
+});
+
+// 検証対象: multipart/form-data のテキスト項目を req.body、単一ファイルを req.files[0] で扱う処理。
+test('multipart form data separates body fields and a single file', async () => {
+  const app = express();
+  app.post('/multipart', async (req, res) => {
+    const file = req.files[0];
+    res.json({
+      body: req.body,
+      file: {
+        fieldName: file.fieldName,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        text: await file.text(),
+      },
+    });
+  });
+
+  const formData = new FormData();
+  formData.set('title', 'avatar');
+  formData.set('upload', new File(['hello'], 'hello.txt', { type: 'text/plain' }));
+
+  const response = await app.fetch(
+    new Request('https://example.com/multipart', {
+      method: 'POST',
+      body: formData,
+    }),
+  );
+
+  assert.deepEqual(await response.json(), {
+    body: { title: 'avatar' },
+    file: {
+      fieldName: 'upload',
+      name: 'hello.txt',
+      type: 'text/plain',
+      size: 5,
+      text: 'hello',
+    },
+  });
+});
+
+// 検証対象: multipart/form-data の複数ファイルを送信順の req.files 配列で扱う処理。
+test('multipart form data keeps multiple files in req.files', async () => {
+  const app = express();
+  app.post('/multipart-files', async (req, res) => {
+    res.json({
+      files: await Promise.all(req.files.map(async (file) => ({
+        fieldName: file.fieldName,
+        name: file.name,
+        text: await file.text(),
+      }))),
+    });
+  });
+
+  const formData = new FormData();
+  formData.append('photos', new File(['one'], 'one.txt', { type: 'text/plain' }));
+  formData.append('photos', new File(['two'], 'two.txt', { type: 'text/plain' }));
+
+  const response = await app.fetch(
+    new Request('https://example.com/multipart-files', {
+      method: 'POST',
+      body: formData,
+    }),
+  );
+
+  assert.deepEqual(await response.json(), {
+    files: [
+      { fieldName: 'photos', name: 'one.txt', text: 'one' },
+      { fieldName: 'photos', name: 'two.txt', text: 'two' },
+    ],
+  });
+});
+
+// 検証対象: multipart/form-data の同名テキスト項目を req.body で配列化する処理。
+test('multipart form data groups repeated text fields in req.body', async () => {
+  const app = express();
+  app.post('/multipart-fields', (req, res) => {
+    res.json({
+      body: req.body,
+      files: req.files,
+    });
+  });
+
+  const formData = new FormData();
+  formData.append('tag', 'x');
+  formData.append('tag', 'y');
+
+  const response = await app.fetch(
+    new Request('https://example.com/multipart-fields', {
+      method: 'POST',
+      body: formData,
+    }),
+  );
+
+  assert.deepEqual(await response.json(), {
+    body: { tag: ['x', 'y'] },
+    files: [],
+  });
+});
+
+// 検証対象: GET リクエストでは本文を解析せず req.body を undefined、req.files を空配列にする処理。
 test('GET request keeps req.body undefined', async () => {
   const app = express();
 
   app.get('/body-check', (req, res) => {
-    res.json({ hasBody: req.body !== undefined });
+    res.json({
+      hasBody: req.body !== undefined,
+      files: req.files,
+    });
   });
 
   const response = await app.fetch(new Request('https://example.com/body-check'));
 
-  assert.deepEqual(await response.json(), { hasBody: false });
+  assert.deepEqual(await response.json(), { hasBody: false, files: [] });
 });
 
 // 検証対象: fetch に env を渡さなくても、req.env が undefined にならない処理。

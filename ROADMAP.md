@@ -183,6 +183,29 @@
 
 ---
 
+## 0.3.0（フォーム本文とファイルアップロード）
+
+- Workers 標準 API を使い、Express 利用時の一般的な体験に寄せてフォーム本文を扱えるようにする。
+
+1. フォーム本文の Express ライク化
+
+- [x] `application/x-www-form-urlencoded` を plain object として `req.body` に格納する
+- [x] urlencoded / multipart の同名テキスト項目を配列化する
+- [x] `multipart/form-data` のテキスト項目を `req.body` に格納する
+- [x] `multipart/form-data` のファイル項目を `req.files` 配列に分離する
+- [x] `WorkerExpressFile` 型を公開し、`text()` / `arrayBuffer()` / `stream()` で本文を読めるようにする
+
+2. リリース準備
+
+- [x] フォーム本文とファイルアップロードのテストを追加する
+- [x] README / docs / CHANGELOG を `0.3.0` の仕様に合わせる
+
+完了条件
+
+- [x] `req.body` / `req.files` の仕様が実装・テスト・ドキュメントで一致している。
+
+---
+
 ## 0.2 以降の残タスク
 
 ### 品質・検証
