@@ -36,7 +36,7 @@
   },
   "types": "dist/index.d.ts",
   "devDependencies": {
-    "miniflare": "^4.20260401.0",
+    "miniflare": "^5.20260910.0-alpha",
     "typescript": "^5.9.3",
     "wrangler": "^4.80.0"
   }
